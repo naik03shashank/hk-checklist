@@ -43,4 +43,4 @@ RUN chmod -R 775 storage bootstrap/cache database
 EXPOSE 8000
 
 # Start server - Use php -S for better static file serving from public
-CMD php artisan migrate --force && php -S 0.0.0.0:8000 -t public
+CMD php artisan migrate --force && php artisan db:seed --force && php -S 0.0.0.0:8000 -t public
