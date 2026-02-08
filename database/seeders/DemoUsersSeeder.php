@@ -31,5 +31,12 @@ class DemoUsersSeeder extends Seeder
             ['name' => 'Mr. Housekeeper', 'password' => Hash::make($defaultPass), 'email_verified_at' => now()]
         );
         $hk->syncRoles(['housekeeper']);
+
+        // Your personal account (Permanent)
+        $user = User::firstOrCreate(
+            ['email' => 'shashanklnaik03@gmail.com'],
+            ['name' => 'Shashank Naik', 'password' => Hash::make($defaultPass), 'email_verified_at' => now()]
+        );
+        $user->syncRoles(['admin', 'owner']);
     }
 }
