@@ -59,36 +59,30 @@ class BulkDemoDataSeeder extends Seeder
         }
 
         // ---- Global catalog: Rooms & Tasks (de-duplicated by name) ----
-        $roomNamesPool = ['Bedroom', 'Kitchen', 'Bathroom', 'Living Room', 'Dining', 'Hallway', 'Laundry', 'Balcony'];
+        $roomNamesPool = [
+            'Master Bedroom', 'Guest Bedroom', 'Kitchen', 'Master Bathroom', 'Guest Bathroom', 
+            'Living Room', 'Dining Room', 'Home Office', 'Laundry Room', 'Balcony', 
+            'Gym', 'Pool Area', 'Garage', 'Garden', 'Game Room'
+        ];
 
         $roomsCatalog = collect($roomNamesPool)->map(function ($name) {
-            return Room::firstOrCreate(['name' => $name], ['is_default' => in_array($name, ['Bedroom', 'Kitchen', 'Bathroom'])]);
+            return Room::firstOrCreate(['name' => $name], ['is_default' => true]);
         });
 
         $taskNames = [
-            'Wipe counters',
-            'Clean sink',
-            'Mop floor',
-            'Clean stovetop',
-            'Empty trash',
-            'Make bed',
-            'Change linens',
-            'Dust surfaces',
-            'Vacuum carpet',
-            'Scrub toilet',
-            'Clean mirror',
-            'Wipe shower walls',
-            'Refill toiletries',
-            'Check inventory',
-            'Disinfect handles',
-            'Open windows for airing',
+            'Wipe counters', 'Clean sink', 'Mop floor', 'Clean stovetop', 'Empty trash',
+            'Make bed', 'Change linens', 'Dust surfaces', 'Vacuum carpet', 'Scrub toilet',
+            'Clean mirror', 'Wipe shower walls', 'Refill toiletries', 'Check inventory',
+            'Disinfect handles', 'Open windows for airing', 'Water plants', 'Polish furniture',
+            'Steam carpets', 'Clean windows', 'Organize pantry', 'Sweep balcony',
+            'Vacuum upholstery', 'Clean baseboards', 'Disinfect equipment', 'Skim pool surface'
         ];
 
         $tasksCatalog = collect($taskNames)->map(function ($name) {
             return Task::firstOrCreate(
                 ['name' => $name],
                 [
-                    'type'         => $name === 'Check inventory' ? 'inventory' : 'room',
+                    'type'         => in_array($name, ['Check inventory', 'Organize pantry']) ? 'inventory' : 'room',
                     'is_default'   => true,
                     'instructions' => null,
                 ]
@@ -97,14 +91,18 @@ class BulkDemoDataSeeder extends Seeder
 
         // Simple mapping to prefer some tasks per room:
         $roomTaskMap = [
-            'Kitchen'     => ['Wipe counters', 'Clean sink', 'Clean stovetop', 'Mop floor', 'Empty trash', 'Disinfect handles', 'Open windows for airing'],
-            'Bedroom'     => ['Make bed', 'Change linens', 'Dust surfaces', 'Vacuum carpet', 'Disinfect handles', 'Open windows for airing'],
-            'Bathroom'    => ['Scrub toilet', 'Clean mirror', 'Wipe shower walls', 'Empty trash', 'Refill toiletries', 'Disinfect handles'],
-            'Living Room' => ['Dust surfaces', 'Vacuum carpet', 'Open windows for airing'],
-            'Dining'      => ['Dust surfaces', 'Vacuum carpet', 'Open windows for airing', 'Disinfect handles'],
-            'Hallway'     => ['Vacuum carpet', 'Disinfect handles'],
-            'Laundry'     => ['Check inventory', 'Disinfect handles', 'Open windows for airing'],
-            'Balcony'     => ['Open windows for airing', 'Dust surfaces'],
+            'Kitchen'         => ['Wipe counters', 'Clean sink', 'Clean stovetop', 'Mop floor', 'Empty trash', 'Disinfect handles', 'Open windows for airing', 'Organize pantry'],
+            'Master Bedroom'  => ['Make bed', 'Change linens', 'Dust surfaces', 'Vacuum carpet', 'Disinfect handles', 'Open windows for airing', 'Polish furniture'],
+            'Guest Bedroom'   => ['Make bed', 'Change linens', 'Dust surfaces', 'Vacuum carpet', 'Disinfect handles', 'Open windows for airing'],
+            'Master Bathroom' => ['Scrub toilet', 'Clean mirror', 'Wipe shower walls', 'Empty trash', 'Refill toiletries', 'Disinfect handles'],
+            'Guest Bathroom'  => ['Scrub toilet', 'Clean mirror', 'Wipe shower walls', 'Empty trash', 'Refill toiletries', 'Disinfect handles'],
+            'Living Room'     => ['Dust surfaces', 'Vacuum carpet', 'Open windows for airing', 'Vacuum upholstery', 'Polish furniture'],
+            'Dining Room'     => ['Dust surfaces', 'Vacuum carpet', 'Open windows for airing', 'Disinfect handles', 'Polish furniture'],
+            'Home Office'     => ['Dust surfaces', 'Vacuum carpet', 'Disinfect handles', 'Clean windows'],
+            'Gym'             => ['Disinfect equipment', 'Vacuum carpet', 'Open windows for airing', 'Clean baseboards'],
+            'Pool Area'       => ['Skim pool surface', 'Sweep balcony', 'Empty trash'],
+            'Garden'          => ['Water plants', 'Sweep balcony'],
+            'Game Room'       => ['Dust surfaces', 'Vacuum carpet', 'Vacuum upholstery'],
         ];
 
         // ---- Create Properties, assign to Owners, attach Rooms (pivot), attach Tasks (pivot) ----
