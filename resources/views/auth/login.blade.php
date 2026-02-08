@@ -89,6 +89,16 @@
                     </x-button>
                 </div>
 
+                <!-- Demo Credentials Helper -->
+                <div class="mt-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                    <p class="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 mb-2">Demo Credentials</p>
+                    <div class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        <p><strong>Admin:</strong> admin@example.com / password</p>
+                        <p><strong>Owner:</strong> owner@example.com / password</p>
+                        <p><strong>Housekeeper:</strong> housekeeper@example.com / password</p>
+                    </div>
+                </div>
+
                 @if (Route::has('register'))
                     <p class="text-sm text-gray-600 dark:text-gray-400">
                         {{ __('Don’t have an account?') }}
