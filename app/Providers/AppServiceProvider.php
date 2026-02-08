@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (config('app.env') === 'production') {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Share site name with all views
         view()->composer('*', function ($view) {
             $view->with('siteName', \App\Models\Setting::get('site_name', config('app.name', 'HK Checklist')));
