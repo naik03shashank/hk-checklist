@@ -43,6 +43,7 @@ class RegisteredUserController extends Controller
 
         // Assign default role (for demo purposes)
         if (class_exists(\Spatie\Permission\Models\Role::class)) {
+            \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
             $user->assignRole('owner');
         }
 
