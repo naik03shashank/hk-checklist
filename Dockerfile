@@ -30,7 +30,7 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --optimize-autoloader
 RUN npm install && npm run build
 
 # Create SQLite database
@@ -42,5 +42,5 @@ RUN chmod -R 775 storage bootstrap/cache database
 # Expose port
 EXPOSE 8000
 
-# Start server
-CMD php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=8000
+# Start server - Run migrations but skip seeding in production
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8000
