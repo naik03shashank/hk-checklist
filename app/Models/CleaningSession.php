@@ -22,7 +22,8 @@ class CleaningSession extends Model
         'ended_at',
         'gps_confirmed_at',
         'start_latitude',
-        'start_longitude'
+        'start_longitude',
+        'skipped_rooms'
     ];
 
     protected $casts = [
@@ -30,7 +31,8 @@ class CleaningSession extends Model
         'scheduled_time' => 'datetime',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
-        'gps_confirmed_at' => 'datetime'
+        'gps_confirmed_at' => 'datetime',
+        'skipped_rooms' => 'array'
     ];
 
     public function property(): BelongsTo

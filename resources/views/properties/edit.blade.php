@@ -250,7 +250,7 @@
     </x-card>
 
     {{-- Google Places API --}}
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_API_KEY&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.places_api_key') }}&libraries=places"></script>
 
     {{-- Alpine helpers (kept as before; do not modify photo uploader behavior/UI) --}}
     <script>

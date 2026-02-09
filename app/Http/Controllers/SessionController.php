@@ -232,6 +232,7 @@ class SessionController extends Controller
                 'started_at' => $session->started_at?->toIso8601String(),
                 'ended_at' => $session->ended_at?->toIso8601String(),
                 'gps_confirmed_at' => $session->gps_confirmed_at?->toIso8601String(),
+                'skipped_rooms' => $session->skipped_rooms ?? [],
             ],
             'property' => [
                 'id' => $session->property->id,

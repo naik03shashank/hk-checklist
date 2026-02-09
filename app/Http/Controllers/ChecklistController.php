@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Services\ImageTimestampService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ChecklistController extends Controller
@@ -24,11 +25,13 @@ class ChecklistController extends Controller
     {
         // Explicitly check room-property relationship
         if (! $room->properties()->where('properties.id', $session->property_id)->exists()) {
+            Log::error("ChecklistController@toggle: Room {$room->id} not attached to property {$session->property_id}");
             return response()->json(['message' => 'Room is not attached to this property.'], 404);
         }
 
         // Explicitly check task-room relationship
         if (! $room->tasks()->where('tasks.id', $task->id)->exists()) {
+            Log::error("ChecklistController@toggle: Task {$task->id} not attached to room {$room->id}");
             return response()->json(['message' => 'Task is not attached to this room.'], 404);
         }
 
@@ -346,5 +349,47 @@ class ChecklistController extends Controller
             'path' => $storedPath,
             'timestamp' => $capturedAt->format('Y-m-d H:i:s'),
         ];
+    }
+
+    /**
+     * Skip a room in the cleaning session.
+     */
+    public function skipRoom(Request $request, CleaningSession $session, Room $room)
+    {
+        $this->assertRoomOnSessionProperty($room, $session);
+
+        $skipped = $session->skipped_rooms ?? [];
+        if (!in_array($room->id, $skipped)) {
+            $skipped[] = $room->id;
+            $session->skipped_rooms = $skipped;
+            $session->save();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'skipped_rooms' => $skipped]);
+        }
+
+        return back();
+    }
+
+    /**
+     * Unskip a room in the cleaning session.
+     */
+    public function unskipRoom(Request $request, CleaningSession $session, Room $room)
+    {
+        $this->assertRoomOnSessionProperty($room, $session);
+
+        $skipped = $session->skipped_rooms ?? [];
+        if (in_array($room->id, $skipped)) {
+            $skipped = array_values(array_diff($skipped, [$room->id]));
+            $session->skipped_rooms = $skipped;
+            $session->save();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'skipped_rooms' => $skipped]);
+        }
+
+        return back();
     }
 }

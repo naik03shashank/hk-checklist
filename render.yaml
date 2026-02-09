@@ -19,7 +19,15 @@ services:
       - key: APP_KEY
         generateValue: true
       - key: DB_CONNECTION
-        value: sqlite
+        sync: false # Allow override in dashboard
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
       - key: SESSION_DRIVER
         value: database
       - key: QUEUE_CONNECTION

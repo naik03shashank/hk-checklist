@@ -76,6 +76,36 @@ export default function checklistRenderer(config = {}) {
             }
         },
 
+        async skipRoom(roomId) {
+            if (!confirm('Are you sure you want to skip this room?')) return;
+            try {
+                const response = await window.api.post(`/sessions/${this.sessionId}/rooms/${roomId}/skip`);
+                if (response.success) {
+                    // Update local data
+                    if (!this.sessionData.session.skipped_rooms) this.sessionData.session.skipped_rooms = [];
+                    this.sessionData.session.skipped_rooms.push(roomId);
+                    this.renderChecklist();
+                }
+            } catch (error) {
+                console.error('Error skipping room:', error);
+                alert('Failed to skip room.');
+            }
+        },
+
+        async unskipRoom(roomId) {
+            try {
+                const response = await window.api.post(`/sessions/${this.sessionId}/rooms/${roomId}/unskip`);
+                if (response.success) {
+                    // Update local data
+                    this.sessionData.session.skipped_rooms = this.sessionData.session.skipped_rooms.filter(id => id !== roomId);
+                    this.renderChecklist();
+                }
+            } catch (error) {
+                console.error('Error unskipping room:', error);
+                alert('Failed to unskip room.');
+            }
+        },
+
         renderChecklist() {
             if (!this.sessionData) return;
 
@@ -198,8 +228,11 @@ export default function checklistRenderer(config = {}) {
                 const checkedCount = roomTasks.filter(t => t.checklist_item?.checked).length;
                 const totalCount = roomTasks.length;
                 const isComplete = checkedCount === totalCount && totalCount > 0;
-                // Room is never disabled now
-                const isDisabled = false;
+                // Check if room is skipped
+                const skippedRooms = this.sessionData.session.skipped_rooms || [];
+                const isSkipped = skippedRooms.includes(room.id);
+                // Room is disabled if skipped (visual style)
+                const isDisabled = isSkipped;
 
                 return `
                             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 ${isDisabled ? 'opacity-60' : ''}"
@@ -217,6 +250,18 @@ export default function checklistRenderer(config = {}) {
                                                 ✓ Complete
                                             </span>
                                         ` : ''}
+                                        ${isSkipped ? `
+                                            <span class="text-xs px-2 py-1 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200">
+                                                Skipped
+                                            </span>
+                                        ` : ''}
+                                        <div class="ml-2">
+                                            ${isSkipped ? `
+                                                <button type="button" @click.stop="unskipRoom(${room.id})" class="text-xs text-blue-600 hover:text-blue-800 underline">Unskip</button>
+                                            ` : `
+                                                <button type="button" @click.stop="skipRoom(${room.id})" class="text-xs text-gray-500 hover:text-gray-700 underline">Skip</button>
+                                            `}
+                                        </div>
                                     </div>
                                     <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                         <div class="h-full rounded-full bg-blue-600 transition-all duration-500"
@@ -366,6 +411,7 @@ export default function checklistRenderer(config = {}) {
                                                    name="photos[]"
                                                    multiple
                                                    accept="image/*"
+                                                   capture="environment"
                                                    class="hidden"
                                                    @change="handleFiles($event)" />
                                         </div>
@@ -589,7 +635,7 @@ export default function checklistRenderer(config = {}) {
                                                         <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': detailsOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                                         </svg>
-                                                        <span x-text="detailsOpen ? 'Hide Instructions' : 'READ IMPORTANT NOTES'"></span>
+                                                        <span x-text="detailsOpen ? 'Hide Notes' : 'READ IMPORTANT NOTES'"></span>
                                                     </button>
                                                     ${hasMedia ? `
                                                         <span class="text-xs text-gray-500 dark:text-gray-400">

@@ -146,6 +146,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/sessions/{session}/rooms/{room}/tasks/{task}/photo', [ChecklistController::class, 'taskPhoto'])
         ->name('checklist.task-photo');
 
+    Route::post('/sessions/{session}/rooms/{room}/skip', [ChecklistController::class, 'skipRoom'])
+        ->name('checklist.skip-room');
+    Route::post('/sessions/{session}/rooms/{room}/unskip', [ChecklistController::class, 'unskipRoom'])
+        ->name('checklist.unskip-room');
+
     // Property-level task checklist actions (no room)
     Route::post('/sessions/{session}/property-tasks/{task}/toggle', [ChecklistController::class, 'togglePropertyTask'])
         ->name('checklist.property-task.toggle');
