@@ -25,7 +25,18 @@ class User extends Authenticatable
         'password',
         'phone_number',
         'profile_photo_path',
+        'owner_id',
     ];
+
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function housekeepers()
+    {
+        return $this->hasMany(User::class, 'owner_id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

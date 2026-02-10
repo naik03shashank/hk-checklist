@@ -17,8 +17,8 @@ class SessionController extends Controller
     {
         $sessions = CleaningSession::query()
             ->where('housekeeper_id', Auth::id())
-            ->whereDate('scheduled_date', '<=', now()->toDateString())
-            ->orderBy('scheduled_date', 'desc')
+            ->whereDate('scheduled_date', '>=', now()->toDateString())
+            ->orderBy('scheduled_date', 'asc')
             ->paginate(20);
 
         return view('sessions.index', compact('sessions'));
@@ -43,6 +43,8 @@ class SessionController extends Controller
      */
     private function prepareSessionData(CleaningSession $session): array
     {
+        $session->loadMissing(['checklistItems.photos', 'property.propertyTasks.media']);
+
         // Order rooms & tasks by their pivot sort_order (no visual design change, just consistency)
         $rooms = $session->property->rooms()
             ->with([
@@ -267,6 +269,11 @@ class SessionController extends Controller
                                 'checked' => $item->checked,
                                 'note' => $item->note,
                                 'checked_at' => $item->checked_at?->toIso8601String(),
+                                'photos' => $item->photos->map(fn($p) => [
+                                    'id' => $p->id,
+                                    'url' => $p->url,
+                                    'note' => $p->note,
+                                ])->values()->toArray(),
                             ] : null,
                         ];
                     })->values()->toArray(),
@@ -297,6 +304,11 @@ class SessionController extends Controller
                             'checked' => $item->checked,
                             'note' => $item->note,
                             'checked_at' => $item->checked_at?->toIso8601String(),
+                            'photos' => $item->photos->map(fn($p) => [
+                                'id' => $p->id,
+                                'url' => $p->url,
+                                'note' => $p->note,
+                            ])->values()->toArray(),
                         ] : null,
                     ];
                 })->values()->toArray(),
@@ -322,6 +334,11 @@ class SessionController extends Controller
                             'checked' => $item->checked,
                             'note' => $item->note,
                             'checked_at' => $item->checked_at?->toIso8601String(),
+                            'photos' => $item->photos->map(fn($p) => [
+                                'id' => $p->id,
+                                'url' => $p->url,
+                                'note' => $p->note,
+                            ])->values()->toArray(),
                         ] : null,
                     ];
                 })->values()->toArray(),
@@ -347,6 +364,11 @@ class SessionController extends Controller
                             'checked' => $item->checked,
                             'note' => $item->note,
                             'checked_at' => $item->checked_at?->toIso8601String(),
+                            'photos' => $item->photos->map(fn($p) => [
+                                'id' => $p->id,
+                                'url' => $p->url,
+                                'note' => $p->note,
+                            ])->values()->toArray(),
                         ] : null,
                     ];
                 })->values()->toArray(),
@@ -552,8 +574,8 @@ class SessionController extends Controller
         $rooms = $session->property->rooms()->with('tasks')->get();
         foreach ($rooms as $room) {
             $count = $session->photos()->where('room_id', $room->id)->count();
-            if ($count < 8) {
-                return back()->withErrors(['photos' => "Room {$room->name} needs at least 8 photos."]);
+            if ($count < 2) {
+                return back()->withErrors(['photos' => "Room {$room->name} needs at least 2 summary photos."]);
             }
         }
 

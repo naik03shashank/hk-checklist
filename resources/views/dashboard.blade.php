@@ -26,19 +26,23 @@
     {{-- KPIs --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-            <a href="{{ route('properties.index') }}" class="block">
-                <div class="text-sm text-gray-500 dark:text-gray-400">Properties</div>
-                <div class="text-2xl font-semibold mt-1">{{ data_get($stats, 'properties', 0) }}</div>
-            </a>
-        </div>
+        @hasanyrole('admin|owner|company')
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                <a href="{{ route('properties.index') }}" class="block">
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Properties</div>
+                    <div class="text-2xl font-semibold mt-1">{{ data_get($stats, 'properties', 0) }}</div>
+                </a>
+            </div>
+        @endhasanyrole
 
 
-        <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-            <div class="text-sm text-gray-500 dark:text-gray-400">Rooms</div>
-            <div class="text-2xl font-semibold mt-1">{{ data_get($stats, 'rooms', 0) }}</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">across all properties</div>
-        </div>
+        @hasanyrole('admin|owner|company')
+            <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Rooms</div>
+                <div class="text-2xl font-semibold mt-1">{{ data_get($stats, 'rooms', 0) }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">across all properties</div>
+            </div>
+        @endhasanyrole
         <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
             <a href="{{ route('manage.sessions.index') }}" class="block">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Upcoming Sessions (7d)</div>
@@ -108,29 +112,31 @@
                 @endif
             </div>
 
-            {{-- Recent activity --}}
-            <div class="mt-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
-                <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 font-semibold">Recent Activity</div>
-                @if ($recentSessions->isEmpty())
-                    <div class="p-8 text-center text-sm text-gray-600 dark:text-gray-300">No recent completions.</div>
-                @else
-                    <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                        @foreach ($recentSessions as $s)
-                            <li class="px-4 py-3 flex items-center justify-between">
-                                <div>
-                                    <div class="font-medium">{{ $s->property->name }}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                                        {{ ucfirst($s->status) }} •
-                                        {{ \Illuminate\Support\Carbon::parse($s->scheduled_date)->toFormattedDateString() }}
+            {{-- Recent activity (Hide for strictly housekeepers as requested) --}}
+            @hasanyrole('admin|owner|company')
+                <div class="mt-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
+                    <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 font-semibold">Recent Activity</div>
+                    @if ($recentSessions->isEmpty())
+                        <div class="p-8 text-center text-sm text-gray-600 dark:text-gray-300">No recent completions.</div>
+                    @else
+                        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach ($recentSessions as $s)
+                                <li class="px-4 py-3 flex items-center justify-between">
+                                    <div>
+                                        <div class="font-medium">{{ $s->property->name }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                                            {{ ucfirst($s->status) }} •
+                                            {{ \Illuminate\Support\Carbon::parse($s->scheduled_date)->toFormattedDateString() }}
+                                        </div>
                                     </div>
-                                </div>
-                                <a href="{{ route('sessions.show', $s) }}"
-                                    class="text-sm text-indigo-600 hover:underline">View</a>
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-            </div>
+                                    <a href="{{ route('sessions.show', $s) }}"
+                                        class="text-sm text-indigo-600 hover:underline">View</a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            @endhasanyrole
         </div>
 
         {{-- Right: Role panels --}}
@@ -166,8 +172,8 @@
                 </div>
             @endrole
 
-            {{-- Owner/Admin: Quick properties --}}
-            @hasanyrole('owner|admin')
+            {{-- Owner/Admin/Company: Quick properties --}}
+            @hasanyrole('owner|admin|company')
                 <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl">
                     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                         <div class="font-semibold">Properties</div>

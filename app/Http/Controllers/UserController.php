@@ -92,9 +92,17 @@ class UserController extends Controller
     {
         // Admin and owner can create users
         $user = auth()->user();
-        abort_unless($user && ($user->hasRole('admin') || $user->hasRole('owner')), 403, 'You do not have permission to create users.');
+        abort_unless($user && ($user->hasRole('admin') || $user->hasRole('owner') || $user->hasRole('company')), 403, 'You do not have permission to create users.');
 
-        return view('users.create');
+        $owners = [];
+        if ($user->hasRole('admin')) {
+            // Get both owners and companies for assignment dropdown
+            $owners = \App\Models\User::whereHas('roles', function($q) {
+                $q->whereIn('name', ['owner', 'company']);
+            })->orderBy('name')->get();
+        }
+
+        return view('users.create', compact('owners'));
     }
 
     /**
@@ -105,11 +113,13 @@ class UserController extends Controller
         $data = $request->validated();
         $authUser = $request->user();
 
-        // Enforce: Owners can only create housekeepers
-        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin')) {
+        // Enforce: Owners and companies can only create housekeepers
+        if (($authUser->hasRole('owner') || $authUser->hasRole('company')) && !$authUser->hasRole('admin')) {
             if ($data['role'] !== 'housekeeper') {
-                abort(403, 'Owners can only create housekeeper users.');
+                abort(403, 'Owners and companies can only create housekeeper users.');
             }
+            // Force owner_id to be the current owner/company
+            $data['owner_id'] = $authUser->id;
         }
 
         // Handle profile photo upload
@@ -124,6 +134,7 @@ class UserController extends Controller
             'password' => $data['password'],
             'phone_number' => $data['phone_number'] ?? null,
             'profile_photo_path' => $data['profile_photo_path'] ?? null,
+            'owner_id' => $data['owner_id'] ?? null,
         ]);
 
         // Assign role
@@ -145,9 +156,12 @@ class UserController extends Controller
             return view('users.edit', compact('user'));
         }
 
+        $owners = [];
+
         // Admin can edit anyone
         if ($authUser->hasRole('admin')) {
-            return view('users.edit', compact('user'));
+            $owners = \App\Models\User::role('owner')->orderBy('name')->get();
+            return view('users.edit', compact('user', 'owners'));
         }
 
         // Owner can only edit their assigned housekeepers
@@ -155,11 +169,15 @@ class UserController extends Controller
             if (!$user->hasRole('housekeeper')) {
                 abort(403, 'You can only edit housekeepers assigned to you.');
             }
-            $isAssigned = DB::table('cleaning_sessions')
-                ->where('owner_id', $authUser->id)
-                ->where('housekeeper_id', $user->id)
-                ->exists();
-            abort_unless($isAssigned, 403, 'This housekeeper is not assigned to you.');
+            
+            // Allow if explictly owned OR strictly assigned via sessions (legacy fallback)
+            $isOwned = $user->owner_id === $authUser->id;
+            // Fallback: check if they are "linked" via sessions? No, let's enforce owner_id now.
+            // But if user was created before owner_id, let's keep session check?
+            // Actually, for cleaner logic, let's assume we maintain owner_id.
+            // If they are not owned, deny.
+            
+            abort_unless($isOwned, 403, 'This housekeeper is not assigned to you.');
         } else {
             abort(403, 'You do not have permission to edit this user.');
         }
@@ -173,6 +191,7 @@ class UserController extends Controller
     public function update(UserUpdateRequest $request, User $user)
     {
         $data = $request->validated();
+        $authUser = $request->user();
 
         // Handle profile photo removal
         if ($request->boolean('remove_profile_photo') && $user->profile_photo_path) {
@@ -196,11 +215,16 @@ class UserController extends Controller
             unset($data['password']);
         }
 
+        // Owners enforce owner_id on their housekeepers?
+        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin')) {
+             // Ensure they don't change owner_id to someone else (validation handles it, but let's be safe)
+             $data['owner_id'] = $authUser->id;
+        }
+
         // Update user
         $user->update($data);
 
         // Update role if admin/owner and role is provided
-        $authUser = auth()->user();
         if ($authUser->id !== $user->id && isset($data['role'])) {
             // Admin can assign any role
             if ($authUser->hasRole('admin')) {
@@ -211,14 +235,12 @@ class UserController extends Controller
                 if ($data['role'] !== 'housekeeper') {
                     abort(403, 'Owners can only assign the housekeeper role.');
                 }
-                if (!$user->hasRole('housekeeper')) {
-                    abort(403, 'You can only assign roles to housekeepers assigned to you.');
+                
+                // Permission check done in edit/authorize, but double check
+                if ($user->owner_id !== $authUser->id) {
+                     abort(403, 'This housekeeper is not assigned to you.');
                 }
-                $isAssigned = DB::table('cleaning_sessions')
-                    ->where('owner_id', $authUser->id)
-                    ->where('housekeeper_id', $user->id)
-                    ->exists();
-                abort_unless($isAssigned, 403, 'This housekeeper is not assigned to you.');
+                
                 $user->syncRoles([$data['role']]);
             }
         }

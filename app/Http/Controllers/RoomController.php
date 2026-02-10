@@ -313,6 +313,29 @@ class RoomController extends Controller
             'visible_to_owner' => (bool)($data['visible_to_owner'] ?? true),
             'visible_to_housekeeper' => (bool)($data['visible_to_housekeeper'] ?? true),
         ]);
+
+        // Process new media uploads
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $i => $file) {
+                if (!$file) continue;
+
+                $path = $file->store('task-media', 'public');
+                $mime = $file->getMimeType();
+                $type = str_starts_with($mime, 'video') ? 'video' : 'image';
+
+                // Append new media to the end
+                $nextSort = $task->media()->max('sort_order') + 1;
+
+                $task->media()->create([
+                    'type'       => $type,
+                    'url'        => $path,
+                    'thumbnail'  => $type === 'image' ? $path : null,
+                    'caption'    => $request->input("captions.$i"),
+                    'sort_order' => $nextSort,
+                ]);
+            }
+        }
+
         return redirect()->route('rooms.tasks.index', $room)
             ->with('status', "Task updated: {$task->name}");
     }

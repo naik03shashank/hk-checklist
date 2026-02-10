@@ -94,11 +94,12 @@
                     {{-- Role --}}
                     <div>
                         <x-form.label value="Role" />
-                        <x-form.select name="role" class="w-full" required>
+                        <x-form.select name="role" class="w-full" required x-model="selectedRole">
                             <option value="">— Select Role —</option>
                             @if (auth()->user()->hasRole('admin'))
                                 <option value="admin" @selected(old('role') === 'admin')>Administrator</option>
                                 <option value="owner" @selected(old('role') === 'owner')>Owner</option>
+                                <option value="company" @selected(old('role') === 'company')>Company</option>
                             @endif
                             <option value="housekeeper" @selected(old('role') === 'housekeeper')>Housekeeper</option>
                         </x-form.select>
@@ -109,6 +110,30 @@
                         @endif
                         <x-form.error :messages="$errors->get('role')" />
                     </div>
+
+                    {{-- Assign to Owner/Company (Only for Housekeepers) --}}
+                    @if (auth()->user()->hasRole('admin'))
+                        <div x-show="selectedRole === 'housekeeper'" x-cloak>
+                            <x-form.label value="Assign to Owner/Company (optional)" />
+                            <x-form.select name="owner_id" class="w-full">
+                                <option value="">— Not Assigned —</option>
+                                @foreach ($owners ?? [] as $owner)
+                                    <option value="{{ $owner->id }}" @selected(old('owner_id') == $owner->id)>
+                                        {{ $owner->name }} 
+                                        @if($owner->hasRole('company'))
+                                            (Company)
+                                        @elseif($owner->hasRole('owner'))
+                                            (Owner)
+                                        @endif
+                                    </option>
+                                @endforeach
+                            </x-form.select>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Assign this housekeeper to a specific owner or company for organization.
+                            </p>
+                            <x-form.error :messages="$errors->get('owner_id')" />
+                        </div>
+                    @endif
 
                     {{-- Password --}}
                     <div>
@@ -145,6 +170,7 @@
             return {
                 previewUrl: null,
                 dragOver: false,
+                selectedRole: @json(old('role', '')),
 
                 preview(event) {
                     const file = event.target.files?.[0];

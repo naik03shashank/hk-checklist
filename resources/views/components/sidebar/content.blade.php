@@ -14,23 +14,25 @@
     </x-sidebar.link>
 
     {{-- Properties --}}
-    <x-sidebar.dropdown title="Properties"
-        :active="request()->routeIs('properties.*')">
-        <x-slot name="icon"><x-heroicon-o-home class="w-6 h-6" aria-hidden="true" /></x-slot>
+    @role('admin|owner|company')
+        <x-sidebar.dropdown title="Properties"
+            :active="request()->routeIs('properties.*')">
+            <x-slot name="icon"><x-heroicon-o-home class="w-6 h-6" aria-hidden="true" /></x-slot>
 
-        <x-sidebar.sublink title="All Properties"
-            href="{{ route('properties.index') }}"
-            :active="request()->routeIs('properties.index')" />
+            <x-sidebar.sublink title="All Properties"
+                href="{{ route('properties.index') }}"
+                :active="request()->routeIs('properties.index')" />
 
-        @role('admin|owner')
-            <x-sidebar.sublink title="Add New"
-                href="{{ route('properties.create') }}"
-                :active="request()->routeIs('properties.create')" />
-        @endrole
-    </x-sidebar.dropdown>
+            @role('admin|owner')
+                <x-sidebar.sublink title="Add New"
+                    href="{{ route('properties.create') }}"
+                    :active="request()->routeIs('properties.create')" />
+            @endrole
+        </x-sidebar.dropdown>
+    @endrole
 
-    {{-- Catalogs (Admin/Owner) --}}
-    @role('admin|owner')
+    {{-- Catalogs (Admin/Owner/Company) --}}
+    @role('admin|owner|company')
         <x-sidebar.link title="All Rooms"
             href="{{ route('rooms.index') }}"
             :isActive="request()->routeIs('rooms.*')">
@@ -44,8 +46,8 @@
         </x-sidebar.link>
     @endrole
 
-    {{-- Users (Admin/Owner) --}}
-    @role('owner|admin')
+    {{-- Users (Admin/Owner/Company) --}}
+    @role('owner|admin|company')
         <x-sidebar.dropdown title="Users"
             :active="request()->routeIs('users.*')">
             <x-slot name="icon"><x-heroicon-o-users class="w-6 h-6" aria-hidden="true" /></x-slot>
@@ -76,7 +78,7 @@
     @endrole
 
     {{-- Assignments --}}
-    @role('owner|admin')
+    @role('owner|admin|company')
         <x-sidebar.dropdown title="Assignments"
             :active="request()->routeIs('manage.sessions.*') || request()->routeIs('sessions.*')">
             <x-slot name="icon"><x-icons.assignment class="w-6 h-6" /></x-slot>

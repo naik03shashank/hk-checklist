@@ -21,7 +21,8 @@ class Property extends Model
         'baths',
         'latitude',
         'longitude',
-        'geo_radius_m'
+        'geo_radius_m',
+        'ical_url'
     ];
 
     public function rooms(): BelongsToMany

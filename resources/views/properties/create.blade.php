@@ -131,10 +131,24 @@
               @blur="setTimeout(() => showSuggestions = false, 200)"
               :value="old('address')"
               placeholder="Start typing address..."
+              placeholder="Start typing address..."
               autocomplete="off"
             />
+            <x-form.error :messages="$errors->get('address')" />
+          </div>
 
-            {{-- Address Autocomplete Dropdown --}}
+          {{-- iCal URL --}}
+          <div class="md:col-span-2">
+            <x-form.label value="iCal / Calendar URL (optional)" />
+            <x-form.input name="ical_url" class="w-full" :value="old('ical_url')"
+              placeholder="https://www.airbnb.com/calendar/ical/..." />
+            <p class="mt-1 text-xs text-gray-500">
+               Paste the iCal link from Airbnb or VRBO to sync availability (future feature).
+            </p>
+            <x-form.error :messages="$errors->get('ical_url')" />
+          </div>
+
+          {{-- Address Autocomplete Dropdown --}}
             <div
               x-show="showSuggestions && suggestions.length > 0"
               x-cloak
@@ -346,66 +360,42 @@
         async fetchPlaceSuggestions() {
           this.isLoadingSuggestions = true;
 
-          // Use OpenStreetMap Nominatim for autocomplete
-          if (this.geocodingProvider === 'openstreetmap') {
-            try {
-              const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(this.address)}&format=json&addressdetails=1&limit=5`;
-              const res = await fetch(url, {
-                headers: {
-                  'Accept': 'application/json',
-                  'User-Agent': 'RoomReady/1.0'
-                }
-              });
-
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-              const data = await res.json();
-              this.isLoadingSuggestions = false;
-
-              if (data && data.length > 0) {
-                this.suggestions = data.map(item => ({
-                  display_name: item.display_name,
-                  lat: item.lat,
-                  lon: item.lon,
-                  type: item.type ? item.type.replace(/_/g, ' ') : ''
-                }));
-                this.showSuggestions = true;
-              } else {
-                this.suggestions = [];
-              }
-            } catch (error) {
-              console.warn('OpenStreetMap autocomplete error:', error);
-              this.isLoadingSuggestions = false;
-              this.suggestions = [];
+          // STRICT: Google Places Only
+          if (!this.autocompleteService) {
+            // Check if API loaded
+            if (typeof google === 'undefined') {
+                 console.error('Google Maps API not loaded. Check API key.');
+                 this.geocodeError = 'Google Maps API not loaded.';
             }
+            this.isLoadingSuggestions = false;
             return;
           }
 
-          // Use Google Places for autocomplete
-          if (this.autocompleteService) {
-            try {
-              const request = {
-                input: this.address,
-                types: ['address']
-              };
+          try {
+            const request = {
+              input: this.address,
+              // 'geocode' helps find addresses; remove types for broader search if needed
+              types: ['geocode', 'establishment']
+            };
 
-              this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
-                this.isLoadingSuggestions = false;
-
-                if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                  this.suggestions = predictions;
-                  this.showSuggestions = true;
-                } else {
-                  this.suggestions = [];
-                }
-              });
-            } catch (error) {
-              console.warn('Google Places autocomplete error:', error);
+            this.autocompleteService.getPlacePredictions(request, (predictions, status) => {
               this.isLoadingSuggestions = false;
-              this.suggestions = [];
-            }
-          } else {
+
+              if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                this.suggestions = predictions;
+                this.showSuggestions = true;
+              } else {
+                this.suggestions = [];
+                // ZERO_RESULTS is common, don't scream error unless it's something else
+                if (status !== google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                    console.warn('Google Autocomplete status:', status);
+                }
+              }
+            });
+          } catch (error) {
+            console.warn('Google Places autocomplete error:', error);
             this.isLoadingSuggestions = false;
+            this.suggestions = [];
           }
         },
 
@@ -413,25 +403,24 @@
           this.showSuggestions = false;
           this.suggestions = [];
 
-          // Handle OpenStreetMap suggestion
-          if (suggestion.display_name) {
-            this.address = suggestion.display_name;
-            this.latitude = parseFloat(suggestion.lat);
-            this.longitude = parseFloat(suggestion.lon);
-            return;
-          }
+          // STRICT: Handle Google Places suggestion only
+          // suggestion.description is standard for Autocomplete predictions
+          this.address = suggestion.description; 
 
-          // Handle Google Places suggestion
-          this.address = suggestion.description;
           if (this.placesService && suggestion.place_id) {
             this.isGeocoding = true;
             this.placesService.getDetails(
-              { placeId: suggestion.place_id, fields: ['geometry'] },
+              { placeId: suggestion.place_id, fields: ['geometry', 'formatted_address'] },
               (place, status) => {
                 this.isGeocoding = false;
                 if (status === google.maps.places.PlacesServiceStatus.OK && place.geometry) {
                   this.latitude = place.geometry.location.lat();
                   this.longitude = place.geometry.location.lng();
+                  
+                  // Use the official formatted address if available
+                  if (place.formatted_address) {
+                       this.address = place.formatted_address;
+                  }
                 }
               }
             );
@@ -525,33 +514,40 @@
           this.isGeocoding = true;
           this.geocodeError = '';
 
+          const apiKey = "{{ config('services.google.places_api_key') }}";
+          
+          if (!apiKey) {
+             this.geocodeError = 'Google API Key missing.';
+             this.isGeocoding = false;
+             return;
+          }
+          
+          if (typeof google === 'undefined') {
+             this.geocodeError = 'Google Maps API not loaded.';
+             this.isGeocoding = false;
+             return;
+          }
+
           try {
-            const url =
-              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(this.address)}&format=json&limit=1`;
-            const res = await fetch(url, {
-              headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'RoomReady/1.0'
-              }
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ 'address': this.address }, (results, status) => {
+                this.isGeocoding = false;
+                if (status === 'OK' && results[0]) {
+                    this.latitude = results[0].geometry.location.lat();
+                    this.longitude = results[0].geometry.location.lng();
+                } else {
+                    console.warn('Google Geocode failed: ' + status);
+                    if (status === 'ZERO_RESULTS') {
+                        this.geocodeError = 'Address not found on Google Maps.';
+                    } else {
+                        this.geocodeError = 'Geocoding error: ' + status;
+                    }
+                }
             });
-
-            if (!res.ok) {
-              throw new Error(`HTTP ${res.status}`);
-            }
-
-            const data = await res.json();
-
-            if (data && data.length > 0) {
-              this.latitude = parseFloat(data[0].lat);
-              this.longitude = parseFloat(data[0].lon);
-            } else {
-              this.geocodeError = 'No coordinates found for this address. You can still enter them manually.';
-            }
           } catch (error) {
-            console.warn('Geocoding failed', error);
-            this.geocodeError = 'Unable to fetch coordinates right now. Please try again or enter them manually.';
-          } finally {
-            this.isGeocoding = false;
+              console.warn('Google Geocoder exception', error);
+              this.geocodeError = 'Geocoding exception.';
+              this.isGeocoding = false;
           }
         },
       }

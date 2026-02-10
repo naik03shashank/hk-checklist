@@ -182,6 +182,7 @@
                                         src="{{ $src }}" 
                                         alt="Photo"
                                         class="aspect-square w-full object-cover rounded-xl border transition hover:opacity-90" 
+                                        onerror="this.src='https://placehold.co/400x300?text=Photo+Missing'; this.onerror=null;"
                                     />
                                 </button>
                                 <div 

@@ -101,6 +101,22 @@
                         <x-form.error :messages="$errors->get('phone_number')" />
                     </div>
 
+                    {{-- Owner Selection (Admin only) --}}
+                    @if (auth()->user()->hasRole('admin'))
+                        <div class="md:col-span-2">
+                            <x-form.label value="Assign to Owner" />
+                            <x-form.select name="owner_id" class="w-full">
+                                <option value="">— No Owner —</option>
+                                @foreach ($owners ?? [] as $owner)
+                                    <option value="{{ $owner->id }}" @selected(old('owner_id', $user->owner_id) == $owner->id)>
+                                        {{ $owner->name }}
+                                    </option>
+                                @endforeach
+                            </x-form.select>
+                            <x-form.error :messages="$errors->get('owner_id')" />
+                        </div>
+                    @endif
+
                     {{-- Role (admin can change any role, owner can assign housekeeper to their housekeepers) --}}
                     @php
                         $authUser = auth()->user();

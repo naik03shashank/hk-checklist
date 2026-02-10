@@ -88,17 +88,31 @@
                             {{ $task->name }}
                         </h3>
 
+                        @php
+                            $isMandatory = Str::contains(strtolower($task->name), ['photo', 'picture']) || 
+                                          Str::contains(strtolower($instructions ?? ''), ['take a photo', 'mandatory photo']);
+                        @endphp
+                        
+                        <template x-if="noteValue === '' && @js($isMandatory)">
+                            <span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 uppercase tracking-tight mt-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                                Photo Required
+                            </span>
+                        </template>
+
                         @if($showDetails)
-                            <div class="flex items-center gap-2 mt-1">
+                            <div class="mt-1">
                                 <button
                                     type="button"
                                     @click="detailsOpen = !detailsOpen"
-                                    class="inline-flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors font-bold uppercase tracking-wide"
+                                    class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1"
+                                    title="View Instructions"
                                 >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    <svg class="w-4 h-4 transition-transform duration-300 transform" :class="{ 'rotate-180': detailsOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
                                     </svg>
-                                    <span x-text="detailsOpen ? 'HIDE NOTES' : 'READ IMPORTANT NOTES'"></span>
                                 </button>
                             </div>
                         @endif
@@ -107,22 +121,21 @@
                     {{-- Action Icons: Notes and Photo Upload --}}
                     <div class="flex-shrink-0 flex items-center gap-2" data-note-container>
                         {{-- Note indicator (shows if note exists) --}}
-                        <span x-show="noteValue" class="text-xs text-green-600 dark:text-green-400 font-medium">
-                            <svg class="w-4 h-4 inline" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        <span x-show="noteValue" class="p-1.5 text-blue-600 dark:text-blue-400" title="Note attached">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
                             </svg>
-                            Note
                         </span>
 
                         {{-- Notes Icon Button --}}
                         <button
                             type="button"
                             @click="noteModalOpen = true"
-                            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
+                            class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-95 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
                             {{ $disabled ? 'disabled' : '' }}
                             title="Add Note"
                         >
-                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
                         </button>
@@ -131,11 +144,11 @@
                         <button
                             type="button"
                             @click="photoModalOpen = true"
-                            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
+                            class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 transition-all active:scale-95 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
                             {{ $disabled ? 'disabled' : '' }}
                             title="Upload Photo"
                         >
-                            <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
@@ -154,46 +167,61 @@
                     class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
                 >
                     @if($hasInstructions)
-                        <div class="mb-4">
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Instructions:</h4>
-                            <div class="prose dark:prose-invert prose-sm max-w-none bg-gray-50 dark:bg-gray-900/40 rounded-lg p-4">
+                        <div class="mb-3">
+                            <div class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Instructions</div>
+                            <div class="prose dark:prose-invert prose-sm max-w-none text-gray-600 dark:text-gray-400 leading-relaxed">
                                 {!! nl2br(e($instructions)) !!}
                             </div>
                         </div>
                     @endif
 
                     @if($hasMedia)
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                            @foreach($task->media as $media)
-                                <div class="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
-                                    @if($media->type === 'image')
-                                        <button
-                                            type="button"
-                                            @click="galleryOpen = true; gallerySrc = '{{ $media->url }}'"
-                                            class="block w-full"
-                                        >
-                                            <img
-                                                src="{{ $media->thumbnail ?? $media->url }}"
-                                                alt="{{ $media->caption ?? 'Task media' }}"
-                                                class="w-full h-32 object-cover transition-transform group-hover:scale-105"
-                                                loading="lazy"
-                                            />
+                        <div class="mb-3">
+                            <div class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Examples</div>
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($task->media as $media)
+                                    <div class="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group bg-gray-100 dark:bg-gray-800">
+                                        @if($media->type === 'image')
+                                            <button type="button" @click="galleryOpen = true; gallerySrc = '{{ $media->url }}'" class="block w-full">
+                                                <img src="{{ $media->thumbnail ?? $media->url }}" alt="{{ $media->caption ?? 'Task media' }}"
+                                                     class="w-full h-24 object-cover transition-transform group-hover:scale-105" 
+                                                     onerror="this.src='https://placehold.co/400x300?text=Image+Not+Found'; this.onerror=null;"
+                                                     loading="lazy" />
+                                            </button>
+                                        @else
+                                            <video src="{{ $media->url }}" class="w-full h-24 object-cover" controls muted></video>
+                                        @endif
+                                        @if($media->caption)
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
+                                                <p class="text-[10px] text-white truncate text-center">{{ $media->caption }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($item && $item->photos->count() > 0)
+                        <div class="mb-1">
+                            <div class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1.5">Your Photos</div>
+                            <div class="grid grid-cols-3 gap-2">
+                                @foreach($item->photos as $photo)
+                                    <div class="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group bg-gray-100 dark:bg-gray-800">
+                                        <button type="button" @click="galleryOpen = true; gallerySrc = '{{ $photo->url }}'" class="block w-full">
+                                            <img src="{{ $photo->url }}" alt="Attached photo"
+                                                 class="w-full h-24 object-cover transition-transform group-hover:scale-105" 
+                                                 onerror="this.src='https://placehold.co/400x300?text=Photo+Missing'; this.onerror=null;"
+                                                 loading="lazy" />
                                         </button>
-                                    @else
-                                        <video
-                                            src="{{ $media->url }}"
-                                            class="w-full h-32 object-cover"
-                                            controls
-                                            muted
-                                        ></video>
-                                    @endif
-                                    @if($media->caption)
-                                        <span class="absolute bottom-1 left-1 text-xs px-2 py-1 rounded bg-black/60 text-white">
-                                            {{ Str::limit($media->caption, 20) }}
-                                        </span>
-                                    @endif
-                                </div>
-                            @endforeach
+                                        @if($photo->note)
+                                            <div class="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
+                                                <p class="text-[10px] text-white truncate text-center">{{ $photo->note }}</p>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
                     @endif
                 </div>

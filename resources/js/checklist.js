@@ -99,9 +99,15 @@ export default function checklist(config = {}) {
 
                     // Refresh session data and re-render checklist
                     const sessionContainer = document.querySelector('[data-session-id]');
-                    const sessionId = sessionContainer?.dataset.sessionId ||
-                                     window.location.pathname.match(/\/sessions\/(\d+)/)?.[1];
-                    if (sessionId) {
+                    let sessionId = sessionContainer?.dataset.sessionId;
+
+                    if (!sessionId) {
+                        // Fallback to URL matching if data-attribute is missing
+                        const match = window.location.pathname.match(/\/sessions\/([^\/]+)/);
+                        sessionId = match ? match[1] : null;
+                    }
+
+                    if (sessionId && sessionId !== '{session}') {
                         // Refresh and re-render checklist
                         // This will check room completion and unlock next room if needed
                         this.refreshAndRerender(sessionId);
@@ -258,7 +264,7 @@ export default function checklist(config = {}) {
                 // Refresh session data to get updated photo counts
                 const sessionContainer = document.querySelector('[data-session-id]');
                 const sessionId = sessionContainer?.dataset.sessionId ||
-                                 window.location.pathname.match(/\/sessions\/(\d+)/)?.[1];
+                    window.location.pathname.match(/\/sessions\/([^\/]+)/)?.[1];
                 if (sessionId) {
                     this.refreshAndRerender(sessionId);
                 }
@@ -406,11 +412,17 @@ export default function checklist(config = {}) {
          * Refresh session data and re-render the entire checklist
          */
         async refreshAndRerender(sessionId) {
+            if (!sessionId || sessionId === '{session}') return;
+
             try {
                 // Use provided route URL or fallback to hardcoded path
-                const url = this.dataUrl
-                    ? this.dataUrl.replace('{session}', sessionId)
-                    : `/api/sessions/${sessionId}/data`;
+                let url = this.dataUrl || `/api/sessions/${sessionId}/data`;
+
+                // If the URL still has placeholder, replace it
+                if (url.includes('{session}')) {
+                    url = url.replace('{session}', sessionId);
+                }
+
                 const response = await window.api.get(url);
 
                 if (response.success && response.data) {

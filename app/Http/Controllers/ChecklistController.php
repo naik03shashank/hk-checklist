@@ -17,22 +17,27 @@ use Illuminate\Support\Facades\Storage;
 
 class ChecklistController extends Controller
 {
-    /**
-     * Toggle the checked state of a checklist item for a specific (session, room, task).
-     * Requires: the room belongs to the session's property AND the task is attached to that room.
-     */
     public function toggle(ChecklistToggleRequest $request, CleaningSession $session, Room $room, Task $task)
     {
-        // Explicitly check room-property relationship
-        if (! $room->properties()->where('properties.id', $session->property_id)->exists()) {
-            Log::error("ChecklistController@toggle: Room {$room->id} not attached to property {$session->property_id}");
-            return response()->json(['message' => 'Room is not attached to this property.'], 404);
-        }
+        Log::info("ChecklistController@toggle: Session {$session->id}, Room {$room->id}, Task {$task->id}");
+        // RELAXED CHECK: If item exists, allow toggle
+        $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('room_id', $room->id)
+            ->where('task_id', $task->id)
+            ->exists();
 
-        // Explicitly check task-room relationship
-        if (! $room->tasks()->where('tasks.id', $task->id)->exists()) {
-            Log::error("ChecklistController@toggle: Task {$task->id} not attached to room {$room->id}");
-            return response()->json(['message' => 'Task is not attached to this room.'], 404);
+        if (! $itemExists) {
+            // Explicitly check room-property relationship for NEW items
+            if (! $room->properties()->where('properties.id', $session->property_id)->exists()) {
+                Log::error("ChecklistController@toggle: Room {$room->id} not attached to property {$session->property_id}");
+                return response()->json(['message' => 'Room is not attached to this property.'], 404);
+            }
+
+             // Explicitly check task-room relationship for NEW items
+            if (! $room->tasks()->where('tasks.id', $task->id)->exists()) {
+                Log::error("ChecklistController@toggle: Task {$task->id} not attached to room {$room->id}");
+                return response()->json(['message' => 'Task is not attached to this room.'], 404);
+            }
         }
 
         // Create if missing (unique on session_id+room_id+task_id is recommended at DB level)
@@ -77,12 +82,21 @@ class ChecklistController extends Controller
      */
     public function togglePropertyTask(ChecklistToggleRequest $request, CleaningSession $session, Task $task)
     {
-        // Verify task is a property-level task for this session's property
-        abort_unless(
-            $session->property->propertyTasks()->where('tasks.id', $task->id)->exists(),
-            404,
-            'Task not found as property-level task for this session.'
-        );
+        Log::info("ChecklistController@togglePropertyTask: Session {$session->id}, Task {$task->id}");
+        // RELAXED CHECK: If the checklist item ALREADY exists for this session, we allow toggling it,
+        // even if the task was theoretically removed from the property definition after session start.
+        $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('task_id', $task->id)
+            ->whereNull('room_id')
+            ->exists();
+
+        if (! $itemExists) {
+            // If it doesn't exist yet, we strictly require it to be currently attached to the property
+            if (! $session->property->propertyTasks()->where('tasks.id', $task->id)->exists()) {
+                Log::error("ChecklistController@togglePropertyTask: Task {$task->id} not found as property-level task for property {$session->property_id}");
+                return response()->json(['message' => 'Task not found as property-level task for this session.'], 404);
+            }
+        }
 
         // Create if missing
         $item = ChecklistItem::firstOrCreate(
@@ -127,7 +141,16 @@ class ChecklistController extends Controller
     public function note(ChecklistNoteRequest $request, CleaningSession $session, Room $room, Task $task)
     {
         $this->assertRoomOnSessionProperty($room, $session);
-        $this->assertTaskAttachedToRoom($task, $room);
+        
+        // Relaxed check for task-room
+        $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('room_id', $room->id)
+            ->where('task_id', $task->id)
+            ->exists();
+
+        if (!$itemExists) {
+            $this->assertTaskAttachedToRoom($task, $room);
+        }
 
         $item = ChecklistItem::firstOrCreate(
             [
@@ -166,12 +189,20 @@ class ChecklistController extends Controller
      */
     public function notePropertyTask(ChecklistNoteRequest $request, CleaningSession $session, Task $task)
     {
-        // Verify task is a property-level task for this session's property
-        abort_unless(
-            $session->property->propertyTasks()->where('tasks.id', $task->id)->exists(),
-            404,
-            'Task not found as property-level task for this session.'
-        );
+        // RELAXED CHECK: If the checklist item ALREADY exists for this session, we allow adding notes,
+        // even if the task was theoretically removed from the property definition.
+        $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('task_id', $task->id)
+            ->whereNull('room_id')
+            ->exists();
+
+        if (! $itemExists) {
+            abort_unless(
+                $session->property->propertyTasks()->where('tasks.id', $task->id)->exists(),
+                404,
+                'Task not found as property-level task for this session.'
+            );
+        }
 
         $item = ChecklistItem::firstOrCreate(
             [
@@ -235,7 +266,15 @@ class ChecklistController extends Controller
     public function taskPhoto(Request $request, CleaningSession $session, Room $room, Task $task)
     {
         $this->assertRoomOnSessionProperty($room, $session);
-        $this->assertTaskAttachedToRoom($task, $room);
+        // RELAXED CHECK
+         $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('room_id', $room->id)
+            ->where('task_id', $task->id)
+            ->exists();
+
+        if (!$itemExists) {
+            $this->assertTaskAttachedToRoom($task, $room);
+        }
 
         $request->validate([
             'photo' => 'required|image|max:10240', // 10MB max
@@ -281,12 +320,19 @@ class ChecklistController extends Controller
      */
     public function propertyTaskPhoto(Request $request, CleaningSession $session, Task $task)
     {
-        // Verify task is a property-level task for this session's property
-        abort_unless(
-            $session->property->propertyTasks()->where('tasks.id', $task->id)->exists(),
-            404,
-            'Task not found as property-level task for this session.'
-        );
+        // RELAXED CHECK
+         $itemExists = ChecklistItem::where('session_id', $session->id)
+            ->where('task_id', $task->id)
+            ->whereNull('room_id')
+            ->exists();
+
+        if (!$itemExists) {
+            abort_unless(
+                $session->property->propertyTasks()->where('tasks.id', $task->id)->exists(),
+                404,
+                'Task not found as property-level task for this session.'
+            );
+        }
 
         $request->validate([
             'photo' => 'required|image|max:10240', // 10MB max

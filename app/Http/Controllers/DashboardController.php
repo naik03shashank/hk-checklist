@@ -18,17 +18,18 @@ class DashboardController extends Controller
         $u = $request->user();
         $isAdmin = $u?->hasRole('admin') ?? false;
         $isOwner = $u?->hasRole('owner') ?? false;
+        $isCompany = $u?->hasRole('company') ?? false;
         $isHK    = $u?->hasRole('housekeeper') ?? false;
 
         if ($isAdmin) {
-            if ($isOwner && $request->query('as') === 'owner') return 'owner';
+            if (($isOwner || $isCompany) && $request->query('as') === 'owner') return 'owner';
             return 'admin';
         }
-        if ($isOwner) return 'owner';
+        if ($isOwner || $isCompany) return 'owner';
         if ($isHK) return 'housekeeper';
         
-        // Final fallback: if no role is found, treat as owner to avoid 403 during demo/setup
-        return 'owner';
+        // Final fallback: if no role is found, treat as housekeeper to be safe
+        return 'housekeeper';
     }
 
     /** Base scoped sessions query by acting role. */

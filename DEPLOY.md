@@ -26,3 +26,14 @@ The `dbase.sql` file contains your data.
 ## 4. Troubleshooting
 *   **500 Error:** Check Render logs. Likely missing Environment Variables or DB connection failure.
 *   **404 on Assets:** Ensure `npm run build` finished successfully in the build logs.
+
+## 5. Recent Updates (Feb 2026)
+- **Geocoding:** `GEOCODING_PROVIDER=google` added to `.env`. Ensure `GOOGLE_GEOCODING_API_KEY` is set.
+- **Housekeepers:** Assigned to Owners via `owner_id`.
+- **Calendar:** Added iCal URL field for properties.
+- **Sessions:** Housekeepers now see upcoming sessions (Today + Future).
+
+## Quick Start (Local)
+1.  Run migrations: `php artisan migrate`
+2.  Start server: `run_project.bat`
+

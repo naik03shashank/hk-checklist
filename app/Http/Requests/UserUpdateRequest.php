@@ -32,10 +32,7 @@ class UserUpdateRequest extends FormRequest
                 return false;
             }
             // Check if housekeeper is assigned to this owner
-            return \Illuminate\Support\Facades\DB::table('cleaning_sessions')
-                ->where('owner_id', $authUser->id)
-                ->where('housekeeper_id', $user->id)
-                ->exists();
+            return $user->owner_id === $authUser->id;
         }
 
         return false;
@@ -57,6 +54,7 @@ class UserUpdateRequest extends FormRequest
             'phone_number' => ['nullable', 'string', 'max:20'],
             'profile_photo' => ['nullable', 'image', 'max:5120'], // 5MB
             'remove_profile_photo' => ['sometimes', 'boolean'],
+            'owner_id' => ['nullable', 'exists:users,id'],
         ];
 
         // Admin can change any role

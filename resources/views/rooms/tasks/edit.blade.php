@@ -13,7 +13,8 @@
         {{-- MAIN UPDATE FORM (only this wraps fields + Save/Cancel) --}}
         <form method="post"
               action="{{ route('rooms.tasks.update', [$room, $task]) }}"
-              class="space-y-6">
+              class="space-y-6"
+              enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -97,9 +98,8 @@
                         <span class="text-xs text-gray-500 dark:text-gray-400">Optional</span>
                     </div>
 
-                    {{-- New uploads — this component must render inputs with form="media-upload-form" --}}
-                    {{-- Ensure it includes: <input type="file" name="media[]" multiple accept="image/*,video/*" form="media-upload-form"> --}}
-                    <x-media.uploader form-id="media-upload-form" />
+                    {{-- New uploads — integrated into main form --}}
+                    <x-media.uploader />{{-- form-id removed --}}
 
                     {{-- Existing media (each Remove button points to an external form via form="media-delete-XX") --}}
                     @if ($task->media->count())
@@ -146,15 +146,7 @@
         </form>
     </x-card>
 
-    {{-- EXTERNAL MEDIA UPLOAD FORM (separate, never nested) --}}
-    <form id="media-upload-form"
-          action="{{ route('properties.tasks.media.store', $task) }}"
-          method="post"
-          enctype="multipart/form-data"
-          class="hidden">
-        @csrf
-        {{-- file inputs are rendered in <x-media.uploader> with form="media-upload-form" --}}
-    </form>
+    {{-- EXTERNAL MEDIA DELETE FORMS remain, as deleting is a separate action --}}
 
     {{-- EXTERNAL MEDIA DELETE FORMS (one per media). Placed OUTSIDE the main form. --}}
     @foreach ($task->media as $m)

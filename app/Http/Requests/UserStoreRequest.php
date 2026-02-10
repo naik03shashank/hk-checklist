@@ -14,8 +14,8 @@ class UserStoreRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        // Admin and owner can create users
-        return $user && ($user->hasRole('admin') || $user->hasRole('owner'));
+        // Admin, owner, and company can create users
+        return $user && ($user->hasRole('admin') || $user->hasRole('owner') || $user->hasRole('company'));
     }
 
     /**
@@ -26,10 +26,10 @@ class UserStoreRequest extends FormRequest
     public function rules(): array
     {
         $authUser = $this->user();
-        $roleRules = ['required', Rule::in(['admin', 'owner', 'housekeeper'])];
+        $roleRules = ['required', Rule::in(['admin', 'owner', 'company', 'housekeeper'])];
 
-        // Owners can only create housekeepers
-        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin')) {
+        // Owners and companies can only create housekeepers
+        if (($authUser->hasRole('owner') || $authUser->hasRole('company')) && !$authUser->hasRole('admin')) {
             $roleRules = ['required', Rule::in(['housekeeper'])];
         }
 
@@ -40,6 +40,7 @@ class UserStoreRequest extends FormRequest
             'phone_number' => ['nullable', 'string', 'max:20'],
             'profile_photo' => ['nullable', 'image', 'max:5120'], // 5MB
             'role' => $roleRules,
+            'owner_id' => ['nullable', 'exists:users,id'],
         ];
     }
 }
