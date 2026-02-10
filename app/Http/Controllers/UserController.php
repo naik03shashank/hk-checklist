@@ -25,9 +25,10 @@ class UserController extends Controller
 
         $users = User::query()
             ->with('roles')
-            ->when($auth->hasRole('owner') && ! $auth->hasRole('admin'), function ($qry) use ($auth) {
+            ->when(($auth->hasRole('owner') || $auth->hasRole('company')) && ! $auth->hasRole('admin'), function ($qry) use ($auth) {
                 $qry->where(function ($q) use ($auth) {
                     $q->where('users.id', $auth->id)
+                        ->orWhere('users.owner_id', $auth->id)
                         ->orWhere(function ($qq) use ($auth) {
                             $qq->whereHas('roles', fn($r) => $r->where('name', 'housekeeper'))
                                 ->whereExists(function ($sub) use ($auth) {
@@ -37,6 +38,13 @@ class UserController extends Controller
                                         ->where('cs.owner_id', $auth->id);
                                 });
                         });
+                    
+                    // If company, also show housekeepers of their owners
+                    if ($auth->hasRole('company')) {
+                        $q->orWhereIn('users.owner_id', function($sub) use ($auth) {
+                            $sub->select('id')->from('users')->where('owner_id', $auth->id);
+                        });
+                    }
                 });
             })
             ->when($q !== '', fn($qry) => $qry->where(function ($q2) use ($q) {
@@ -113,12 +121,16 @@ class UserController extends Controller
         $data = $request->validated();
         $authUser = $request->user();
 
-        // Enforce: Owners and companies can only create housekeepers
-        if (($authUser->hasRole('owner') || $authUser->hasRole('company')) && !$authUser->hasRole('admin')) {
+        // Owners can only create housekeepers, companies can create owners and housekeepers
+        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin') && !$authUser->hasRole('company')) {
             if ($data['role'] !== 'housekeeper') {
-                abort(403, 'Owners and companies can only create housekeeper users.');
+                abort(403, 'Owners can only create housekeeper users.');
             }
-            // Force owner_id to be the current owner/company
+            $data['owner_id'] = $authUser->id;
+        } elseif ($authUser->hasRole('company') && !$authUser->hasRole('admin')) {
+            if (!in_array($data['role'], ['owner', 'housekeeper'])) {
+                abort(403, 'Companies can only create owner and housekeeper users.');
+            }
             $data['owner_id'] = $authUser->id;
         }
 
@@ -164,20 +176,18 @@ class UserController extends Controller
             return view('users.edit', compact('user', 'owners'));
         }
 
-        // Owner can only edit their assigned housekeepers
-        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin')) {
-            if (!$user->hasRole('housekeeper')) {
-                abort(403, 'You can only edit housekeepers assigned to you.');
+        // Owner/Company can only edit their assigned housekeepers/owners
+        if (($authUser->hasRole('owner') || $authUser->hasRole('company')) && !$authUser->hasRole('admin')) {
+            $isDirectlyOwned = $user->owner_id === $authUser->id;
+            $isIndirectlyOwned = false;
+            
+            if ($authUser->hasRole('company')) {
+                $isIndirectlyOwned = User::where('id', $user->owner_id)
+                    ->where('owner_id', $authUser->id)
+                    ->exists();
             }
-            
-            // Allow if explictly owned OR strictly assigned via sessions (legacy fallback)
-            $isOwned = $user->owner_id === $authUser->id;
-            // Fallback: check if they are "linked" via sessions? No, let's enforce owner_id now.
-            // But if user was created before owner_id, let's keep session check?
-            // Actually, for cleaner logic, let's assume we maintain owner_id.
-            // If they are not owned, deny.
-            
-            abort_unless($isOwned, 403, 'This housekeeper is not assigned to you.');
+
+            abort_unless($isDirectlyOwned || $isIndirectlyOwned, 403, 'This user is not assigned to you or your team.');
         } else {
             abort(403, 'You do not have permission to edit this user.');
         }
@@ -280,6 +290,6 @@ class UserController extends Controller
     private function assertOwnerOrAdmin(): void
     {
         $u = auth()->user();
-        abort_unless($u && $u->hasAnyRole(['admin', 'owner']), 403);
+        abort_unless($u && $u->hasAnyRole(['admin', 'owner', 'company']), 403);
     }
 }

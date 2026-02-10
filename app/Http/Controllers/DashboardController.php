@@ -53,6 +53,15 @@ class DashboardController extends Controller
             return null;
         }
         if ($acting === 'owner') {
+            $user = User::find($userId);
+            if ($user && $user->hasRole('company')) {
+                return Property::where(function($q) use ($userId) {
+                    $q->where('owner_id', $userId)
+                      ->orWhereIn('owner_id', function($sub) use ($userId) {
+                          $sub->select('id')->from('users')->where('owner_id', $userId);
+                      });
+                })->pluck('id');
+            }
             return Property::where('owner_id', $userId)->pluck('id');
         }
         // housekeeper: distinct properties from their sessions (last 180d + next 180d for practicality)

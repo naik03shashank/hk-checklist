@@ -28,9 +28,11 @@ class UserStoreRequest extends FormRequest
         $authUser = $this->user();
         $roleRules = ['required', Rule::in(['admin', 'owner', 'company', 'housekeeper'])];
 
-        // Owners and companies can only create housekeepers
-        if (($authUser->hasRole('owner') || $authUser->hasRole('company')) && !$authUser->hasRole('admin')) {
+        // Owners can only create housekeepers, Companies can create owners and housekeepers
+        if ($authUser->hasRole('owner') && !$authUser->hasRole('admin') && !$authUser->hasRole('company')) {
             $roleRules = ['required', Rule::in(['housekeeper'])];
+        } elseif ($authUser->hasRole('company') && !$authUser->hasRole('admin')) {
+            $roleRules = ['required', Rule::in(['owner', 'housekeeper'])];
         }
 
         return [

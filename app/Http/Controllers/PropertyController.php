@@ -28,6 +28,13 @@ class PropertyController extends Controller
             // Admin can see all properties, no extra constraints
         } elseif ($authenticatedUser->hasRole('owner')) {
             $propertyQuery->where('owner_id', $authenticatedUser->id);
+        } elseif ($authenticatedUser->hasRole('company')) {
+            $propertyQuery->where(function($q) use ($authenticatedUser) {
+                $q->where('owner_id', $authenticatedUser->id)
+                  ->orWhereIn('owner_id', function($sub) use ($authenticatedUser) {
+                      $sub->select('id')->from('users')->where('owner_id', $authenticatedUser->id);
+                  });
+            });
         } elseif ($authenticatedUser->hasRole('housekeeper')) {
             $propertyQuery->whereIn('id', function ($subQuery) use ($authenticatedUser) {
                 $subQuery->select('property_id')
@@ -50,9 +57,20 @@ class PropertyController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $owners = User::whereHas('roles', function ($query) {
-            $query->where('name', 'owner');
-        })->with('roles')->get();
+        $ownersResourceQuery = User::whereHas('roles', function ($query) {
+            $query->whereIn('name', ['owner', 'company']);
+        });
+
+        if ($authenticatedUser->hasRole('company') && !$authenticatedUser->hasRole('admin')) {
+            $ownersResourceQuery->where(function($q) use ($authenticatedUser) {
+                $q->where('id', $authenticatedUser->id)
+                  ->orWhere('owner_id', $authenticatedUser->id);
+            });
+        } elseif (!$authenticatedUser->hasRole('admin')) {
+            $ownersResourceQuery->where('id', $authenticatedUser->id);
+        }
+
+        $owners = $ownersResourceQuery->with('roles')->orderBy('name')->get();
 
         $rooms = Room::select('id', 'name', 'is_default')
             ->orderBy('name')
@@ -66,8 +84,19 @@ class PropertyController extends Controller
     {
         abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can create properties.');
 
+        $ownerSelectQuery = User::role(['owner', 'company']);
+        
+        if ($request->user()->hasRole('company') && !$request->user()->hasRole('admin')) {
+            $ownerSelectQuery->where(function($q) use ($request) {
+                $q->where('id', $request->user()->id)
+                  ->orWhere('owner_id', $request->user()->id);
+            });
+        } elseif (!$request->user()->hasRole('admin')) {
+            $ownerSelectQuery->where('id', $request->user()->id);
+        }
+
         return view('properties.create', [
-            'owners' => User::role('owner')->pluck('name', 'id')->all(),
+            'owners' => $ownerSelectQuery->orderBy('name')->pluck('name', 'id')->all(),
             "rooms" => Room::where('is_default', true)->get()
         ]);
     }
@@ -124,9 +153,20 @@ class PropertyController extends Controller
     {
         abort_unless($request->user() && $request->user()->hasAnyRole(['admin', 'owner', 'company']), 403, 'Only administrators, owners, and companies can edit properties.');
 
+        $ownerSelectQuery = User::role(['owner', 'company']);
+        
+        if ($request->user()->hasRole('company') && !$request->user()->hasRole('admin')) {
+            $ownerSelectQuery->where(function($q) use ($request) {
+                $q->where('id', $request->user()->id)
+                  ->orWhere('owner_id', $request->user()->id);
+            });
+        } elseif (!$request->user()->hasRole('admin')) {
+            $ownerSelectQuery->where('id', $request->user()->id);
+        }
+
         return view('properties.edit', [
             'property' => $property,
-            'owners' => User::role('owner')->pluck('name', 'id')->all()
+            'owners' => $ownerSelectQuery->orderBy('name')->pluck('name', 'id')->all()
         ]);
     }
 
