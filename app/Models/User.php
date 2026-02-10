@@ -33,9 +33,16 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'owner_id');
     }
 
-    public function housekeepers()
+    // A housekeeper belongs to many owners/companies
+    public function managedOwners()
     {
-        return $this->hasMany(User::class, 'owner_id');
+        return $this->belongsToMany(User::class, 'housekeeper_owner', 'housekeeper_id', 'owner_id');
+    }
+
+    // An owner/company manages many housekeepers
+    public function managedHousekeepers()
+    {
+        return $this->belongsToMany(User::class, 'housekeeper_owner', 'owner_id', 'housekeeper_id');
     }
 
     /**

@@ -216,7 +216,7 @@
             previews: [],
             existingMedia: @js($isEdit && $task ? $task->media->map(fn($m) => [
                 'id' => $m->id,
-                'url' => Storage::url($m->url),
+                'url' => (string) $m->url,
                 'type' => $m->type,
                 'caption' => $m->caption
             ]) : [])
@@ -226,7 +226,11 @@
                     url: URL.createObjectURL(file),
                     type: file.type.startsWith('video') ? 'video':'image',
                     name: file.name
-                }))
+                }));
+                // Update the actual file input to contain ALL selected files
+                const dt = new DataTransfer();
+                f.forEach(file => dt.items.add(file));
+                $refs.mediaInput.files = dt.files;
             })
         ">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

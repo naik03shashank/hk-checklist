@@ -56,7 +56,18 @@ class ManageSessionController extends Controller
             // admin: full system, owner: only their properties
             ->when(
                 $acting === 'owner',
-                fn($qry) => $qry->where('owner_id', $u->id)
+                function($qry) use ($u) {
+                    if ($u->hasRole('company')) {
+                        $qry->where(function($q) use ($u) {
+                            $q->where('cleaning_sessions.owner_id', $u->id)
+                              ->orWhereIn('cleaning_sessions.owner_id', function($sub) use ($u) {
+                                  $sub->select('id')->from('users')->where('owner_id', $u->id);
+                              });
+                        });
+                    } else {
+                        $qry->where('cleaning_sessions.owner_id', $u->id);
+                    }
+                }
             )
             ->when($filters['property_id'], fn($qry, $v) => $qry->where('property_id', $v))
             ->when($filters['housekeeper_id'], fn($qry, $v) => $qry->where('housekeeper_id', $v))
@@ -68,7 +79,18 @@ class ManageSessionController extends Controller
         $sessions = $q->paginate(20)->withQueryString();
 
         $properties = Property::query()
-            ->when($acting === 'owner', fn($qry) => $qry->where('owner_id', $u->id))
+            ->when($acting === 'owner', function($qry) use ($u) {
+                if ($u->hasRole('company')) {
+                    $qry->where(function($q) use ($u) {
+                        $q->where('owner_id', $u->id)
+                          ->orWhereIn('owner_id', function($sub) use ($u) {
+                              $sub->select('id')->from('users')->where('owner_id', $u->id);
+                          });
+                    });
+                } else {
+                    $qry->where('owner_id', $u->id);
+                }
+            })
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -118,13 +140,14 @@ class ManageSessionController extends Controller
         }
 
 
-        // owner may create only for own properties
+        // owner may create only for own properties or their owners' properties
         if ($acting === 'owner') {
-            abort_unless(
-                Property::whereKey($data['property_id'])->where('owner_id', $u->id)->exists(),
-                403,
-                'You can schedule only for your properties.'
-            );
+            $prop = Property::find($data['property_id']);
+            $isAuthorized = ($prop->owner_id === $u->id);
+            if (!$isAuthorized && $u->hasRole('company')) {
+                $isAuthorized = User::where('id', $prop->owner_id)->where('owner_id', $u->id)->exists();
+            }
+            abort_unless($isAuthorized, 403, 'You can schedule only for your properties or properties of your owners.');
         }
 
         // assignee must be a housekeeper
@@ -170,7 +193,11 @@ class ManageSessionController extends Controller
         abort_if($acting === 'forbidden', 403);
 
         if ($acting === 'owner') {
-            abort_unless($session->property->owner_id === $u->id, 403);
+            $isAuthorized = ($session->property->owner_id === $u->id);
+            if (!$isAuthorized && $u->hasRole('company')) {
+                $isAuthorized = User::where('id', $session->property->owner_id)->where('owner_id', $u->id)->exists();
+            }
+            abort_unless($isAuthorized, 403);
         }
 
         $properties = Property::query()

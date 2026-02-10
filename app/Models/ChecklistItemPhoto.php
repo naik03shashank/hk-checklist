@@ -21,6 +21,8 @@ class ChecklistItemPhoto extends Model
         'captured_at' => 'datetime',
     ];
 
+    protected $appends = ['url'];
+
     /**
      * Get the checklist item this photo belongs to.
      */

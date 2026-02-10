@@ -233,15 +233,23 @@
                         <x-form.error :messages="$errors->get('longitude')" />
                     </div>
 
-                    {{-- iCal URL --}}
-                    <div class="md:col-span-2">
-                        <x-form.label value="iCal / Calendar URL (optional)" />
-                        <x-form.input name="ical_url" class="w-full" :value="old('ical_url', $property->ical_url)"
-                            placeholder="https://www.airbnb.com/calendar/ical/..." />
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Paste the iCal link from Airbnb or VRBO to sync availability.
-                        </p>
-                        <x-form.error :messages="$errors->get('ical_url')" />
+                    {{-- Integrations Section --}}
+                    <div class="md:col-span-2 mt-4">
+                        <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                            Calendar Sync (Airbnb / Vrbo)
+                        </h4>
+                        <div class="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30">
+                            <x-form.label value="iCal URL" />
+                            <x-form.input name="ical_url" class="w-full bg-white dark:bg-gray-800" :value="old('ical_url', $property->ical_url)"
+                                placeholder="https://www.airbnb.com/calendar/ical/..." />
+                            <p class="mt-2 text-xs text-gray-500 leading-relaxed">
+                                Paste your property's iCal link to automatically sync bookings. This ensures rooms and sessions are aligned with your actual guest arrivals.
+                            </p>
+                            <x-form.error :messages="$errors->get('ical_url')" />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -43,6 +43,8 @@ class UserStoreRequest extends FormRequest
             'profile_photo' => ['nullable', 'image', 'max:5120'], // 5MB
             'role' => $roleRules,
             'owner_id' => ['nullable', 'exists:users,id'],
+            'owner_ids' => ['nullable', 'array'],
+            'owner_ids.*' => ['exists:users,id'],
         ];
     }
 }

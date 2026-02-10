@@ -55,6 +55,8 @@ class UserUpdateRequest extends FormRequest
             'profile_photo' => ['nullable', 'image', 'max:5120'], // 5MB
             'remove_profile_photo' => ['sometimes', 'boolean'],
             'owner_id' => ['nullable', 'exists:users,id'],
+            'owner_ids' => ['nullable', 'array'],
+            'owner_ids.*' => ['exists:users,id'],
         ];
 
         // Admin can change any role

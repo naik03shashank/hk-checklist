@@ -101,19 +101,43 @@
                         <x-form.error :messages="$errors->get('phone_number')" />
                     </div>
 
-                    {{-- Owner Selection (Admin only) --}}
-                    @if (auth()->user()->hasRole('admin'))
-                        <div class="md:col-span-2">
-                            <x-form.label value="Assign to Owner" />
-                            <x-form.select name="owner_id" class="w-full">
-                                <option value="">— No Owner —</option>
-                                @foreach ($owners ?? [] as $owner)
-                                    <option value="{{ $owner->id }}" @selected(old('owner_id', $user->owner_id) == $owner->id)>
-                                        {{ $owner->name }}
-                                    </option>
-                                @endforeach
-                            </x-form.select>
-                            <x-form.error :messages="$errors->get('owner_id')" />
+                    {{-- Master Owner (Primary association) --}}
+                    @if (auth()->user()->hasAnyRole(['admin', 'owner', 'company']))
+                        @php
+                            $userRole = $user->roles->first()?->name;
+                            $showOwnerSelection = ($userRole === 'housekeeper');
+                        @endphp
+                        
+                        <div x-show="selectedRole === 'housekeeper'" class="md:col-span-2 space-y-4">
+                            <div>
+                                <x-form.label value="Primary Owner / Company" />
+                                <x-form.select name="owner_id" class="w-full">
+                                    <option value="">— Direct (Managed by you) —</option>
+                                    @foreach ($owners ?? [] as $owner)
+                                        <option value="{{ $owner->id }}" @selected(old('owner_id', $user->owner_id) == $owner->id)>
+                                            {{ $owner->name }} ({{ ucfirst($owner->roles->first()?->name) }})
+                                        </option>
+                                    @endforeach
+                                </x-form.select>
+                            </div>
+
+                            {{-- Multiple Owner Assignment --}}
+                            <div>
+                                <x-form.label value="Also attach to these Owners (Optional)" />
+                                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                                    @foreach ($owners ?? [] as $owner)
+                                        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:text-indigo-600 transition-colors">
+                                            <input type="checkbox" name="owner_ids[]" value="{{ $owner->id }}" 
+                                                   class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
+                                                   @checked(in_array($owner->id, old('owner_ids', $user->managedOwners->pluck('id')->toArray())))>
+                                            {{ $owner->name }}
+                                        </label>
+                                    @endforeach
+                                </div>
+                                <p class="mt-2 text-xs text-gray-500">
+                                    Housekeepers will be able to see properties and sessions for all selected owners.
+                                </p>
+                            </div>
                         </div>
                     @endif
 

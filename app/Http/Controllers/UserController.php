@@ -152,6 +152,11 @@ class UserController extends Controller
         // Assign role
         $user->assignRole($data['role']);
 
+        // Attach to multiple owners if provided
+        if (!empty($data['owner_ids'])) {
+            $user->managedOwners()->sync($data['owner_ids']);
+        }
+
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
     }
@@ -170,9 +175,8 @@ class UserController extends Controller
 
         $owners = [];
 
-        // Admin can edit anyone
         if ($authUser->hasRole('admin')) {
-            $owners = \App\Models\User::role('owner')->orderBy('name')->get();
+            $owners = \App\Models\User::whereHas('roles', fn($q) => $q->whereIn('name', ['owner', 'company']))->orderBy('name')->get();
             return view('users.edit', compact('user', 'owners'));
         }
 
@@ -185,6 +189,11 @@ class UserController extends Controller
                 $isIndirectlyOwned = User::where('id', $user->owner_id)
                     ->where('owner_id', $authUser->id)
                     ->exists();
+
+                // For company, get owners they manage
+                $owners = User::where('owner_id', $authUser->id)
+                    ->whereHas('roles', fn($q) => $q->where('name', 'owner'))
+                    ->orderBy('name')->get();
             }
 
             abort_unless($isDirectlyOwned || $isIndirectlyOwned, 403, 'This user is not assigned to you or your team.');
@@ -192,7 +201,7 @@ class UserController extends Controller
             abort(403, 'You do not have permission to edit this user.');
         }
 
-        return view('users.edit', compact('user'));
+        return view('users.edit', compact('user', 'owners'));
     }
 
     /**
@@ -253,6 +262,11 @@ class UserController extends Controller
                 
                 $user->syncRoles([$data['role']]);
             }
+        }
+
+        // Update many-to-many owners for housekeepers
+        if ($user->hasRole('housekeeper') && isset($data['owner_ids'])) {
+            $user->managedOwners()->sync($data['owner_ids']);
         }
 
         $redirectRoute = $authUser->id === $user->id

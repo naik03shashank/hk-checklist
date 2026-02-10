@@ -18,6 +18,8 @@ class TaskMedia extends Model
         'sort_order' => 'integer',
     ];
 
+    protected $appends = ['url', 'thumbnail'];
+
     public function task()
     {
         return $this->belongsTo(Task::class);

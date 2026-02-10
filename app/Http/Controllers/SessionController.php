@@ -57,6 +57,33 @@ class SessionController extends Controller
 
         // Ensure existing checklist items (same as before, but already correct with room context)
         foreach ($rooms as $room) {
+            // First, check if there's any task mentioning '8 Photos' or 'Mandatory Photo'
+            $hasMandatoryTask = $room->tasks->some(fn($t) => 
+                stripos($t->name, '8 Photos') !== false || stripos($t->name, 'Mandatory Photo') !== false
+            );
+
+            // If not, we find or create a global 'Mandatory Photo' task and attach it locally for this session
+            // or just ensure a checklist item exists for it.
+            if (!$hasMandatoryTask) {
+                $mandatoryTask = \App\Models\Task::firstOrCreate(
+                    ['name' => '📸 Take 8 Photos of this Room (Required)'],
+                    ['type' => 'room', 'instructions' => 'Please take at least 8 clear photos of the completed room.']
+                );
+                
+                // Ensure checklist item exists for this mandatory task
+                \App\Models\ChecklistItem::firstOrCreate(
+                    [
+                        'session_id' => $session->id,
+                        'room_id'    => $room->id,
+                        'task_id'    => $mandatoryTask->id,
+                    ],
+                    [
+                        'user_id' => auth()->id(),
+                        'checked' => false,
+                    ]
+                );
+            }
+
             foreach ($room->tasks as $task) {
                 \App\Models\ChecklistItem::firstOrCreate(
                     [

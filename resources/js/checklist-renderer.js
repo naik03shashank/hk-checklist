@@ -17,7 +17,7 @@ export default function checklistRenderer(config = {}) {
             // Get session ID from data attribute or URL
             const container = document.querySelector('[data-session-id]');
             this.sessionId = container?.dataset.sessionId ||
-                window.location.pathname.match(/\/sessions\/(\d+)/)?.[1];
+                window.location.pathname.match(/\/sessions\/([^\/]+)/)?.[1];
 
             if (!this.sessionId) {
                 console.error('Session ID not found');
@@ -602,14 +602,17 @@ export default function checklistRenderer(config = {}) {
                 photoUploading: false,
                 previewUrl: null,
                 itemPhotos: ${JSON.stringify(task.checklist_item?.photos || [])},
-                get isMandatoryPhoto() {
+                get photoRequirement() {
                     const name = "${task.name.replace(/"/g, '\\"')}".toLowerCase();
-                    const instructions = "${(task.instructions || '').replace(/"/g, '\\"').replace(/\n/g, ' ')}".toLowerCase();
-                    return name.includes('photo') || name.includes('picture') || name.includes('capture') ||
-                           instructions.includes('take a photo') || instructions.includes('take a picture') || instructions.includes('mandatory photo');
+                    if (name.includes('8') && (name.includes('photo') || name.includes('picture'))) return 8;
+                    if (name.includes('required') || name.includes('mandatory')) return 1;
+                    return 0;
+                },
+                get isMandatoryPhoto() {
+                    return this.photoRequirement > 0;
                 },
                 get canToggle() {
-                    if (this.isMandatoryPhoto && this.itemPhotos.length === 0) return false;
+                    if (this.isMandatoryPhoto && this.itemPhotos.length < this.photoRequirement) return false;
                     return true;
                 }
                      }">
@@ -618,7 +621,7 @@ export default function checklistRenderer(config = {}) {
                             <div class="flex-shrink-0 pt-1">
                                 <button type="button"
                                         data-checklist-toggle
-                                        @click="canToggle ? handleToggle($event, $el) : showError('This task requires a photo before it can be completed.')"
+                                        @click="canToggle ? handleToggle($event, $el) : showError(photoRequirement > 1 ? 'This task requires at least ' + photoRequirement + ' photos before it can be completed.' : 'This task requires a photo before it can be completed.')"
                                         data-toggle-url="${toggleUrl}"
                                         data-checked="${checked}"
                                         :disabled="${taskDisabled} || noteSaving || photoUploading"
@@ -640,68 +643,67 @@ export default function checklistRenderer(config = {}) {
                             </div>
 
                             <div class="flex-1 min-w-0">
-                                <h3 data-task-name class="text-base font-bold text-gray-900 dark:text-gray-100 transition-all leading-tight ${checked ? 'line-through text-gray-500 dark:text-gray-400' : ''}">
-                                    ${task.name}
-                                </h3>
-                                
-                                <template x-if="isMandatoryPhoto && itemPhotos.length === 0 && !${checked}">
-                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 uppercase tracking-tight mt-1">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                        </svg>
-                                        Photo Required
-                                    </span>
-                                </template>
-                                
-                                ${showDetails ? `
-                                    <div class="mt-1 flex items-center justify-between">
-                                        <button type="button" @click="detailsOpen = !detailsOpen"
-                                                class="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600/70 dark:text-blue-400/70 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1"
-                                                title="View Instructions">
-                                            <svg class="w-4 h-4 transition-transform duration-300 transform" :class="{ 'rotate-180': detailsOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                                <div class="flex flex-col gap-1">
+                                    <h3 data-task-name class="text-lg font-bold text-gray-900 dark:text-gray-100 transition-all ${checked ? 'line-through text-gray-400 dark:text-gray-500 font-medium' : ''}">
+                                        ${task.name}
+                                    </h3>
+                                    
+                                    <template x-if="isMandatoryPhoto && itemPhotos.length < photoRequirement && !${checked}">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 uppercase tracking-tight">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                             </svg>
+                                            <span x-text="photoRequirement > 1 ? (itemPhotos.length + '/' + photoRequirement + ' Photos Required') : 'Photo Required'"></span>
+                                        </span>
+                                    </template>
+                                    
+                                    ${showDetails ? `
+                                        <div class="mt-1">
+                                            <button type="button" @click="detailsOpen = !detailsOpen"
+                                                    class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 transition-colors">
+                                                <span x-text="detailsOpen ? 'Hide Instructions' : 'View Instructions'"></span>
+                                                <svg class="w-4 h-4 transition-transform duration-300" :class="{ 'rotate-180': detailsOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <!-- Footer Actions -->
+                                <div class="mt-4 flex items-center justify-between border-t border-gray-100 dark:border-gray-800/50 pt-3" data-note-container>
+                                    <div class="flex items-center gap-1.5">
+                                        <!-- Note Icon Button -->
+                                        <button type="button" 
+                                                @click="noteModalOpen = true"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all active:scale-95"
+                                                :class="noteValue ? 'border-blue-200 bg-blue-50 text-blue-600' : ''"
+                                                title="Add Note">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                            <span class="text-xs font-bold uppercase tracking-tight">Note</span>
+                                        </button>
+
+                                        <!-- Camera Icon Button -->
+                                        <button type="button" 
+                                                @click="photoModalOpen = true"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 transition-all active:scale-95"
+                                                :class="itemPhotos.length > 0 ? 'border-green-200 bg-green-50 text-green-600' : ''"
+                                                title="Upload Photo">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            </svg>
+                                            <span class="text-xs font-bold uppercase tracking-tight">Photo</span>
+                                            <template x-if="itemPhotos.length > 0">
+                                                <span class="bg-green-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center" x-text="itemPhotos.length"></span>
+                                            </template>
                                         </button>
                                     </div>
-                                ` : ''}
-                            </div>
-                        </div>
-
-                        <!-- Footer Actions -->
-                        <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                            <div class="flex-1">
-                                ${hasUserNote ? `
-                                    <div class="p-1.5 text-blue-600 dark:text-blue-400 cursor-pointer" @click="noteModalOpen = true" title="Note attached">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
-                                        </svg>
-                                    </div>
-                                ` : ''}
-                            </div>
-                            
-                            <div class="flex items-center gap-1.5">
-                                <!-- Note Icon Button -->
-                                <button type="button" 
-                                        @click="noteModalOpen = true"
-                                        class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all active:scale-95"
-                                        title="Add Note">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                </button>
-
-                                <!-- Camera Icon Button -->
-                                <button type="button" 
-                                        @click="photoModalOpen = true"
-                                        class="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 transition-all active:scale-95"
-                                        title="Upload Photo">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+                                    
+                                    <input type="hidden" data-note-input x-model="noteValue" />
+                                </div>
 
                         ${showDetails ? `
                             <div x-show="detailsOpen" x-collapse x-cloak class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
