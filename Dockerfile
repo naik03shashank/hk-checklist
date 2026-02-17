@@ -38,7 +38,8 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Install Node dependencies and build assets
 # We set NODE_ENV to production and run build
-RUN npm install && NODE_ENV=production npm run build
+RUN npm install && NODE_ENV=production npm run build && \
+    if [ -f public/build/.vite/manifest.json ]; then cp public/build/.vite/manifest.json public/build/manifest.json; fi
 
 # Setup Nginx
 COPY .render/nginx.conf /etc/nginx/sites-available/default
