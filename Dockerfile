@@ -33,21 +33,22 @@ WORKDIR /var/www
 # Copy application files
 COPY . /var/www
 
-# Fix permissions for the build process
-RUN chown -R www-data:www-data /var/www
-
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
 # Install Node dependencies and build assets
-RUN npm install && npm run build
+# We set NODE_ENV to production and run build
+RUN npm install && NODE_ENV=production npm run build
 
 # Setup Nginx
 COPY .render/nginx.conf /etc/nginx/sites-available/default
 
 # Ensure the database directory exists and has correct permissions
-RUN mkdir -p database && touch database/database.sqlite && \
-    chown -R www-data:www-data /var/www/database /var/www/storage /var/www/bootstrap/cache /var/www/public
+RUN mkdir -p database && touch database/database.sqlite
+
+# Finalize permissions for everything
+RUN chown -R www-data:www-data /var/www && \
+    chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # Expose port 80
 EXPOSE 80
@@ -57,6 +58,9 @@ RUN echo '#!/bin/sh\n\
     php artisan migrate --force\n\
     php artisan db:seed --class=DatabaseSeeder --force\n\
     php artisan storage:link\n\
+    php artisan config:cache\n\
+    php artisan route:cache\n\
+    php artisan view:cache\n\
     php-fpm -D\n\
     nginx -g "daemon off;"\n\
     ' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
