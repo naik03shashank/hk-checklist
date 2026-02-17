@@ -27,7 +27,8 @@ COPY . /var/www
 # Install PHP and JS dependencies, then build assets
 RUN composer install --no-dev --optimize-autoloader && \
     npm install && \
-    npm run build
+    npm run build && \
+    cp public/build/.vite/manifest.json public/build/manifest.json || true
 
 # Setup Nginx config
 COPY .render/nginx.conf /etc/nginx/sites-available/default
