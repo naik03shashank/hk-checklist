@@ -1,0 +1,14 @@
+/node_modules
+/public/storage
+/storage/*.key
+/vendor
+.env
+.git
+.gitignore
+*.bat
+*.ps1
+/database/*.sqlite
+/database/*.sql
+/storage/app/public/checklist-photos/*
+/storage/app/public/room_photos/*
+/storage/app/public/task_media/*
