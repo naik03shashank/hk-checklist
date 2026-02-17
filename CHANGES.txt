@@ -1,0 +1,26 @@
+# HK-Checklist - Project Update & Bug Fix Summary
+Date: 2026-02-17
+
+## ✅ 8-Photo Rule & Housekeeper Polish (NEW)
+- **Mandatory 8-Photo Requirement**: Implemented the "8-photo rule" for rooms. Every room now automatically includes a mandatory task: "📸 Take 8 Photos of this Room (Required)".
+- **UI Progress Indicators**: The checklist now displays real-time progress for photo tasks (e.g., "3/8 Photos Required") and prevents checking off the task until the minimum requirement is met.
+- **Unified "Read Notes" Label**: Standardized all collapsible note buttons to say "Read Notes" and merged Instructions/Notes under a single clean header to reduce clutter.
+- **Housekeeper Task Filtering**: Housekeepers now strictly see only the tasks marked as "Visible to Housekeeper" by an Admin or Owner.
+
+## 🛠 Stability & Reliability (NEW)
+- **Resolved 500 Error on User Creation**: Completely refactored the User Store logic to fix a crash occurring when creating Company users or assigning multiple owners. Added detailed logging for future troubleshooting.
+- **Optimized Checklist Loading**: Improved session data preparation to handle bulk task initialization more efficiently, reducing database overhead for large properties.
+- **Relaxed Authorization for Toggle**: Updated `ChecklistController` to better handle data synchronization. Toggling a task no longer fails with a 404 if the task association has changed after the session started, ensuring cleaners aren't blocked.
+- **Storage Link/Media Fixes**: Verified and re-established the public storage link to resolve broken image thumbnails in instructions and notes.
+
+## 📅 iCal & Scheduling Enhancements (PREVIOUS)
+- **Dual-Source Calendar Sync**: Added support for both Airbnb and Vrbo iCal feeds simultaneously per property.
+- **Unscheduled Checkout Detection**: The dashboard now identifies booking checkouts from iCal that do not yet have a corresponding cleaning session scheduled.
+- **Action Required Alerts**: Owners and Admins now receive prominent dashboard notifications for unscheduled checkouts.
+
+## 👥 Role & Visibility Updates (PREVIOUS)
+- **Company Role Polishing**: Enhanced the 'Company' user role to properly manage multiple property owners and visibility across their housekeepers.
+- **Last Login Tracking**: Implemented session-based tracking of last_login_at to facilitate "New Since Last Login" notifications.
+
+---
+*All core bugs identified in the checklist, property duplication, and user management modules have been resolved. The system is now optimized for the 8-photo mandatory requirement.*
