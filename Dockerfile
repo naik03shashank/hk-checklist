@@ -35,11 +35,20 @@ RUN composer install --no-dev --optimize-autoloader
 # Setup Nginx
 COPY .render/nginx.conf /etc/nginx/sites-available/default
 
-# Permissions
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+# Create SQLite database file if it doesn't exist
+RUN mkdir -p database && touch database/database.sqlite && chmod 666 database/database.sqlite
+
+# Permissions for storage and cache
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/database
 
 # Expose port 80
 EXPOSE 80
 
-# Start PHP-FPM and Nginx
-CMD php-fpm -D && nginx -g "daemon off;"
+# Start script
+RUN echo '#!/bin/sh\n\
+    php artisan migrate --force\n\
+    php-fpm -D\n\
+    nginx -g "daemon off;"\n\
+    ' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
+
+CMD ["/usr/local/bin/start.sh"]
