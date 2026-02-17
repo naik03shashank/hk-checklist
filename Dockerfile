@@ -2,18 +2,9 @@ FROM php:8.2-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    zip \
-    unzip \
-    nginx \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev
+    git curl libpng-dev libonig-dev libxml2-dev zip unzip nginx libfreetype6-dev libjpeg62-turbo-dev
 
-# Install Node.js
+# Install Node.js for asset building
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs
 
@@ -21,8 +12,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -33,31 +24,26 @@ WORKDIR /var/www
 # Copy application files
 COPY . /var/www
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Install PHP and JS dependencies, then build assets
+RUN composer install --no-dev --optimize-autoloader && \
+    npm install && \
+    npm run build
 
-# Install Node dependencies and build assets
-# We set NODE_ENV to production and run build
-RUN npm install && NODE_ENV=production npm run build && \
-    if [ -f public/build/.vite/manifest.json ]; then cp public/build/.vite/manifest.json public/build/manifest.json; fi
-
-# Setup Nginx
+# Setup Nginx config
 COPY .render/nginx.conf /etc/nginx/sites-available/default
 
-# Ensure the database directory exists and has correct permissions
-RUN mkdir -p database && touch database/database.sqlite
-
-# Finalize permissions for everything
-RUN chown -R www-data:www-data /var/www && \
-    chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Ensure necessary directories exist and have correct permissions
+RUN mkdir -p database storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && \
+    touch database/database.sqlite && \
+    chown -R www-data:www-data /var/www && \
+    chmod -R 775 /var/www/storage /var/www/bootstrap/cache /var/www/database
 
 # Expose port 80
 EXPOSE 80
 
-# Start script
+# Production Start Script (NO SEEDING, only migrations)
 RUN echo '#!/bin/sh\n\
     php artisan migrate --force\n\
-    php artisan db:seed --class=DatabaseSeeder --force\n\
     php artisan storage:link\n\
     php artisan config:cache\n\
     php artisan route:cache\n\
