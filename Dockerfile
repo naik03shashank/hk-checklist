@@ -13,6 +13,10 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev
 
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -29,8 +33,11 @@ WORKDIR /var/www
 # Copy existing application directory contents
 COPY . /var/www
 
-# Install dependencies
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
+
+# Install JS dependencies and build assets
+RUN npm install && npm run build
 
 # Setup Nginx
 COPY .render/nginx.conf /etc/nginx/sites-available/default
@@ -47,8 +54,8 @@ EXPOSE 80
 # Start script
 RUN echo '#!/bin/sh\n\
     php artisan migrate --force\n\
-    # Seed roles and demo data if no users exist\n\
     php artisan db:seed --class=DatabaseSeeder --force\n\
+    php artisan storage:link\n\
     php-fpm -D\n\
     nginx -g "daemon off;"\n\
     ' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
