@@ -22,10 +22,7 @@ class DatabaseSeeder extends Seeder
         | per client request since they already have their own data.
         */
         
-        // $this->call(DemoUsersSeeder::class);
-        // $this->call(RoomSeeder::class);
-        // $this->call(TaskSeeder::class);
-        // $this->call(BulkDemoDataSeeder::class);
-        // $this->call(SpecificHousekeeperSeeder::class);
+        $this->call(DemoUsersSeeder::class);
+        $this->call(SpecificHousekeeperSeeder::class);
     }
 }

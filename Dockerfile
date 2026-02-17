@@ -47,6 +47,8 @@ EXPOSE 80
 # Start script
 RUN echo '#!/bin/sh\n\
     php artisan migrate --force\n\
+    # Seed roles and demo data if no users exist\n\
+    php artisan db:seed --class=DatabaseSeeder --force\n\
     php-fpm -D\n\
     nginx -g "daemon off;"\n\
     ' > /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
