@@ -30,23 +30,24 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www
 
-# Copy existing application directory contents
+# Copy application files
 COPY . /var/www
+
+# Fix permissions for the build process
+RUN chown -R www-data:www-data /var/www
 
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-# Install JS dependencies and build assets
+# Install Node dependencies and build assets
 RUN npm install && npm run build
 
 # Setup Nginx
 COPY .render/nginx.conf /etc/nginx/sites-available/default
 
-# Create SQLite database file if it doesn't exist
-RUN mkdir -p database && touch database/database.sqlite && chmod 666 database/database.sqlite
-
-# Permissions for storage and cache
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/database
+# Ensure the database directory exists and has correct permissions
+RUN mkdir -p database && touch database/database.sqlite && \
+    chown -R www-data:www-data /var/www/database /var/www/storage /var/www/bootstrap/cache /var/www/public
 
 # Expose port 80
 EXPOSE 80
