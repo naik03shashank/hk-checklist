@@ -42,9 +42,10 @@ RUN mkdir -p database storage/framework/sessions storage/framework/views storage
 # Expose port 80
 EXPOSE 80
 
-# Production Start Script (NO SEEDING, only migrations)
+# Start script
 RUN echo '#!/bin/sh\n\
     php artisan migrate --force\n\
+    php artisan db:seed --force\n\
     php artisan storage:link\n\
     php artisan config:cache\n\
     php artisan route:cache\n\
